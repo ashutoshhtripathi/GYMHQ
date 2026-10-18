@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
 from app.database import Base
 
 
 class User(Base):
-    """Application user for authentication."""
+    """Application user for authentication and platform administration."""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -18,4 +18,6 @@ class User(Base):
     gym_phone = Column(String, nullable=True)
     upi_id = Column(String, nullable=True)
     role = Column(String, default="admin", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

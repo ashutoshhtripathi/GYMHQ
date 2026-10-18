@@ -169,6 +169,16 @@ export default function Layout() {
             </button>
 
             <Link
+              to="/access-control"
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="Platform Super Admin & Access Control"
+            >
+              <span>👑</span>
+              Access Control
+            </Link>
+
+            <Link
               to="/guide"
               className="btn btn-secondary btn-sm"
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}

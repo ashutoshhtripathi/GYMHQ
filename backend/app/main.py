@@ -7,6 +7,7 @@ from app.database import engine, Base
 from app.routers import (
     auth_router, members_router, attendance_router,
     payments_router, dashboard_router, reports_router,
+    platform_router,
 )
 
 settings = get_settings()
@@ -46,6 +47,7 @@ app.include_router(attendance_router)
 app.include_router(payments_router)
 app.include_router(dashboard_router)
 app.include_router(reports_router)
+app.include_router(platform_router)
 
 
 @app.get("/health", tags=["Health"])

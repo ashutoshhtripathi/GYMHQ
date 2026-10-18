@@ -69,8 +69,11 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
         username=data.username,
         email=data.email,
         password_hash=hash_password(data.password),
+        full_name=data.full_name or data.username,
         gym_name=data.gym_name or "My Gym",
+        gym_phone=data.gym_phone,
         role="admin",
+        is_active=True,
     )
     db.add(user)
     db.commit()
@@ -85,13 +88,27 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(data: UserLogin, db: Session = Depends(get_db)):
-    """Login and receive a JWT token."""
-    user = db.query(User).filter(User.username == data.username).first()
+    """Login with username or email and receive a JWT token."""
+    login_id = data.username.strip().lower()
+    user = db.query(User).filter(
+        (User.username == login_id) | (User.email == login_id)
+    ).first()
+
     if not user or not user.password_hash or not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
+            detail="Invalid username/email or password",
         )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your GYMHQ account access has been suspended by the platform administrator. Please contact support.",
+        )
+
+    from datetime import datetime, timezone
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
 
     access_token = create_access_token(data={"sub": user.username})
     return Token(
@@ -134,6 +151,11 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
         user = db.query(User).filter(User.email == email).first()
 
     if user:
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your GYMHQ account access has been suspended by the platform administrator. Please contact support.",
+            )
         # Update user profile with latest Google data
         if google_id and not user.google_id:
             user.google_id = google_id
@@ -141,6 +163,8 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
             user.full_name = name
         if picture and not user.avatar_url:
             user.avatar_url = picture
+        from datetime import datetime, timezone
+        user.last_login_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(user)
     else:
@@ -163,6 +187,7 @@ def google_auth(data: GoogleAuthRequest, db: Session = Depends(get_db)):
             google_id=google_id,
             role="admin",
             password_hash=None,
+            is_active=True,
         )
         db.add(user)
         db.commit()

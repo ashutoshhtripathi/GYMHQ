@@ -108,3 +108,35 @@ def test_google_auth():
     assert "access_token" in data
     assert data["user"]["email"] == "testowner@gmail.com"
     assert data["user"]["role"] == "admin"
+
+
+def test_platform_overview():
+    """Verify platform overview statistics endpoint."""
+    response = client.get("/api/platform/overview")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_gyms" in data
+    assert "active_gyms" in data
+    assert data["total_gyms"] >= 1
+
+
+def test_platform_users():
+    """Verify platform user listing and search endpoint."""
+    response = client.get("/api/platform/users")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert "is_active" in data[0]
+
+
+def test_platform_status_toggle():
+    """Verify platform user activation toggle."""
+    # Toggle user 2 status to False then True
+    response = client.put("/api/platform/users/2/status", json={"is_active": False})
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+    response2 = client.put("/api/platform/users/2/status", json={"is_active": True})
+    assert response2.status_code == 200
+    assert response2.json()["is_active"] is True

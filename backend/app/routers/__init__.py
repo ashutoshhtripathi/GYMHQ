@@ -4,6 +4,7 @@ from app.routers.attendance import router as attendance_router
 from app.routers.payments import router as payments_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.reports import router as reports_router
+from app.routers.platform import router as platform_router
 
 __all__ = [
     "auth_router",
@@ -12,4 +13,5 @@ __all__ = [
     "payments_router",
     "dashboard_router",
     "reports_router",
+    "platform_router",
 ]

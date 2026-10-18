@@ -32,8 +32,12 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const register = async (username, password, email) => {
-    const data = await api.register({ username, password, email: email || null });
+  const register = async (regPayload, passwordArg, emailArg) => {
+    const payload = typeof regPayload === 'object' && regPayload !== null
+      ? regPayload
+      : { username: regPayload, password: passwordArg, email: emailArg || null };
+
+    const data = await api.register(payload);
     localStorage.setItem('gymhq_token', data.access_token);
     localStorage.setItem('gymhq_user', JSON.stringify(data.user));
     if (data.user?.gym_name) {

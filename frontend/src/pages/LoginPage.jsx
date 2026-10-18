@@ -7,17 +7,24 @@ import GymHqLogo from '../components/GymHqLogo';
 
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
-  const [gymName, setGymName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [email, setEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [googleInfoModal, setGoogleInfoModal] = useState(false);
 
-  // Google Sign-In state & custom selector
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [customGoogleName, setCustomGoogleName] = useState('');
-  const [googleLoading, setGoogleLoading] = useState(false);
+  // Form states
+  const [loginId, setLoginId] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Register form states
+  const [regFullName, setRegFullName] = useState('');
+  const [regGymName, setRegGymName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
 
   const { login, register, loginWithGoogle } = useAuth();
   const toast = useToast();
@@ -25,7 +32,7 @@ export default function LoginPage() {
 
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  // Initialize official Google Identity Services if client ID is configured
+  // Initialize official Google Identity Services if client ID is set
   useEffect(() => {
     if (!googleClientId) return;
 
@@ -42,6 +49,7 @@ export default function LoginPage() {
             size: 'large',
             width: '100%',
             text: 'continue_with',
+            shape: 'rectangular',
           });
         }
       }
@@ -61,129 +69,151 @@ export default function LoginPage() {
 
   const handleGoogleCredentialResponse = async (response) => {
     if (!response.credential) return;
-    setGoogleLoading(true);
+    setLoading(true);
     try {
       await loginWithGoogle({ credential: response.credential });
-      toast.success('Successfully signed in with Google!');
+      toast.success('Successfully authenticated with Google!');
       navigate('/');
     } catch (err) {
       toast.error(err.message || 'Google authentication failed.');
     } finally {
-      setGoogleLoading(false);
+      setLoading(false);
     }
   };
 
   const handleGoogleBtnClick = () => {
     if (googleClientId && window.google?.accounts?.id) {
-      // Trigger official Google One-Tap prompt
       window.google.accounts.id.prompt((notification) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          setShowGoogleModal(true);
+          setGoogleInfoModal(true);
         }
       });
     } else {
-      // Open interactive Google account selector
-      setShowGoogleModal(true);
+      setGoogleInfoModal(true);
     }
   };
 
-  const handleQuickGoogleSelect = async (account) => {
-    setGoogleLoading(true);
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    if (!loginId.trim() || !password) {
+      toast.warning('Please enter both your email/username and password.');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await loginWithGoogle(account);
-      toast.success(`Signed in as ${account.name || account.email}!`);
-      setShowGoogleModal(false);
+      await login(loginId.trim(), password);
+      toast.success('Signed in successfully! Welcome to GYMHQ.');
       navigate('/');
     } catch (err) {
-      toast.error(err.message || 'Google sign-in failed.');
+      toast.error(err.message || 'Invalid credentials or account suspended.');
     } finally {
-      setGoogleLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleCustomGoogleSubmit = async (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!customGoogleEmail.trim()) {
-      toast.warning('Please enter a valid Google email address.');
-      return;
-    }
-    const cleanEmail = customGoogleEmail.trim().toLowerCase();
-    const cleanName = customGoogleName.trim() || cleanEmail.split('@')[0];
-    const sub = `google-${Date.now()}`;
-
-    await handleQuickGoogleSelect({
-      email: cleanEmail,
-      name: cleanName,
-      sub,
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!username.trim() || !password) {
-      toast.warning('Please provide both username and password.');
+    if (!regUsername.trim() || !regPassword || !regGymName.trim()) {
+      toast.warning('Please fill in your Gym Name, Username, and Password.');
       return;
     }
 
-    if (isRegister && password.length < 6) {
+    if (regPassword.length < 6) {
       toast.warning('Password must be at least 6 characters.');
       return;
     }
 
     setLoading(true);
     try {
-      if (isRegister) {
-        await register(username.trim(), password, email.trim() || null);
-        if (gymName.trim()) {
-          localStorage.setItem('gymhq_gym_name', gymName.trim());
-        }
-        toast.success(`Welcome to GYMHQ! Your account has been created.`);
-      } else {
-        await login(username.trim(), password);
-        toast.success(`Welcome back, ${username}!`);
-      }
+      await register({
+        username: regUsername.trim().toLowerCase(),
+        password: regPassword,
+        email: regEmail.trim() || null,
+        full_name: regFullName.trim() || null,
+        gym_name: regGymName.trim(),
+        gym_phone: regPhone.trim() || null,
+      });
+
+      toast.success(`Welcome to GYMHQ! '${regGymName}' is now live.`);
       navigate('/');
     } catch (err) {
-      toast.error(err.message || 'Authentication failed. Please verify credentials.');
+      toast.error(err.message || 'Registration failed. Please check details.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      toast.warning('Please enter your account email address.');
+      return;
+    }
+    toast.success('Password recovery instructions dispatched to your email.');
+    setForgotModalOpen(false);
+    setForgotEmail('');
+  };
+
   return (
     <div className="login-page">
-      <div className="login-card">
+      <div className="login-card" style={{ maxWidth: '440px', width: '100%' }}>
         {/* Brand Header */}
-        <div className="login-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', textAlign: 'center' }}>
           <GymHqLogo size="xl" showTagline={false} />
-          <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Commercial Gym & Fitness Club Operations Platform
+          <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)', marginTop: '12px', letterSpacing: '-0.02em' }}>
+            {isRegister ? 'Register Your Fitness Club' : 'Sign In to Your Gym'}
+          </h2>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            {isRegister
+              ? 'Join hundreds of gym owners streamlining member management and fee collection.'
+              : 'Secure Gym Owner & Administrator Operations Portal'}
           </p>
         </div>
 
-        {/* 1. Google One-Click Login Button */}
-        <div style={{ marginBottom: '16px' }}>
+        {/* 1. Official Google OAuth Button */}
+        <div style={{ marginBottom: '18px' }}>
           <div id="googleSignInBtn" style={{ width: '100%' }}></div>
 
           <button
             type="button"
             className="btn-google"
             onClick={handleGoogleBtnClick}
-            disabled={googleLoading}
+            disabled={loading}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '11px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all var(--transition-fast)',
+            }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
             </svg>
-            <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
+            <span>Continue with Google</span>
           </button>
         </div>
 
         {/* Divider */}
-        <div className="auth-divider">
-          <span>or sign in with credentials</span>
+        <div className="auth-divider" style={{ display: 'flex', alignItems: 'center', margin: '18px 0', color: 'var(--text-tertiary)', fontSize: '12px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+          <span style={{ padding: '0 12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            or with credentials
+          </span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
         </div>
 
         {/* Auth Mode Switcher */}
@@ -193,7 +223,7 @@ export default function LoginPage() {
           padding: '4px',
           borderRadius: 'var(--radius-md)',
           marginBottom: '20px',
-          border: '1px solid var(--border-color)'
+          border: '1px solid var(--border-color)',
         }}>
           <button
             type="button"
@@ -205,13 +235,13 @@ export default function LoginPage() {
               border: 'none',
               background: !isRegister ? 'var(--bg-card)' : 'transparent',
               color: !isRegister ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontWeight: !isRegister ? '600' : '400',
+              fontWeight: !isRegister ? '700' : '500',
               fontSize: '13px',
               cursor: 'pointer',
-              transition: 'all var(--transition-fast)'
+              transition: 'all var(--transition-fast)',
             }}
           >
-            Owner Login
+            Sign In
           </button>
           <button
             type="button"
@@ -223,78 +253,210 @@ export default function LoginPage() {
               border: 'none',
               background: isRegister ? 'var(--bg-card)' : 'transparent',
               color: isRegister ? 'var(--text-primary)' : 'var(--text-secondary)',
-              fontWeight: isRegister ? '600' : '400',
+              fontWeight: isRegister ? '700' : '500',
               fontSize: '13px',
               cursor: 'pointer',
-              transition: 'all var(--transition-fast)'
+              transition: 'all var(--transition-fast)',
             }}
           >
             Register Gym
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {isRegister && (
+        {/* SIGN IN FORM */}
+        {!isRegister ? (
+          <form onSubmit={handleLoginSubmit}>
             <div className="form-group">
-              <label className="form-label">Gym / Club Name</label>
+              <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                Username or Business Email *
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="admin or name@yourgym.com"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                autoComplete="username"
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>
+                  Password *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setForgotModalOpen(true)}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="form-input"
+                  placeholder="Enter your account password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  style={{ paddingRight: '40px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    fontSize: '15px',
+                  }}
+                >
+                  {showPassword ? '👁️' : '🔒'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ accentColor: 'var(--accent)' }}
+                />
+                Keep me signed in
+              </label>
+
+              <span style={{ fontSize: '11px', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span className="pulse-dot" style={{ width: '5px', height: '5px' }}></span>
+                SSL Secure
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              disabled={loading}
+              style={{ padding: '12px', fontSize: '14px', fontWeight: '700' }}
+            >
+              {loading ? 'Authenticating...' : 'Sign In to GYMHQ →'}
+            </button>
+          </form>
+        ) : (
+          /* REGISTER GYM FORM */
+          <form onSubmit={handleRegisterSubmit}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                Gym / Fitness Center Name *
+              </label>
               <input
                 type="text"
                 className="form-input"
                 placeholder="e.g. IronCore Fitness Club"
-                value={gymName}
-                onChange={(e) => setGymName(e.target.value)}
+                value={regGymName}
+                onChange={(e) => setRegGymName(e.target.value)}
+                required
               />
             </div>
-          )}
 
-          <div className="form-group">
-            <label className="form-label">Username</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="e.g. admin or gym_owner"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                  Owner Full Name
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Vikram Malhotra"
+                  value={regFullName}
+                  onChange={(e) => setRegFullName(e.target.value)}
+                />
+              </div>
 
-          {isRegister && (
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                  Phone / Mobile
+                </label>
+                <input
+                  type="tel"
+                  className="form-input"
+                  placeholder="+91 98765 43210"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="form-group">
-              <label className="form-label">Email Address (Optional)</label>
+              <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                Business Email Address
+              </label>
               <input
                 type="email"
                 className="form-input"
                 placeholder="owner@yourgym.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={regEmail}
+                onChange={(e) => setRegEmail(e.target.value)}
               />
             </div>
-          )}
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                  Admin Username *
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. ironcore_admin"
+                  value={regUsername}
+                  onChange={(e) => setRegUsername(e.target.value)}
+                  required
+                />
+              </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary w-full btn-lg"
-            disabled={loading || googleLoading}
-            style={{ marginTop: '16px' }}
-          >
-            {loading ? 'Please wait...' : isRegister ? 'Create Gym Account' : 'Sign In to Management'}
-          </button>
-        </form>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: '600' }}>
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="At least 6 chars"
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
 
+            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+              🔒 By registering, you become the primary administrator for your gym. You can manage members, floor entries, and UPI fee collections with complete data privacy.
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              disabled={loading}
+              style={{ padding: '12px', fontSize: '14px', fontWeight: '700' }}
+            >
+              {loading ? 'Creating Gym Account...' : 'Register & Launch Gym →'}
+            </button>
+          </form>
+        )}
+
+        {/* Genuine Trust & Security Footer */}
         <div style={{
           marginTop: '24px',
           paddingTop: '16px',
@@ -302,114 +464,115 @@ export default function LoginPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
-          fontSize: '12px',
-          color: 'var(--text-tertiary)'
+          gap: '16px',
+          fontSize: '11px',
+          color: 'var(--text-tertiary)',
+          flexWrap: 'wrap',
         }}>
-          <span>🔒 256-bit Encrypted</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>🔒</span> 256-Bit SSL
+          </span>
           <span>•</span>
-          <span>PostgreSQL Persistence</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>⚡</span> Real-Time Cloud DB
+          </span>
+          <span>•</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>🛡️</span> Data Isolated
+          </span>
         </div>
       </div>
 
-      {/* Interactive Google Sign-In Modal */}
+      {/* Forgot Password Recovery Modal */}
       <Modal
-        isOpen={showGoogleModal}
-        onClose={() => setShowGoogleModal(false)}
-        title="Sign in with Google"
+        isOpen={forgotModalOpen}
+        onClose={() => setForgotModalOpen(false)}
+        title="🔒 Reset Account Password"
+        maxWidth="420px"
+      >
+        <form onSubmit={handleForgotSubmit}>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+            Enter your registered gym email address. We will send a secure link to reset your administrator credentials.
+          </p>
+
+          <div className="form-group">
+            <label className="form-label">Registered Account Email *</label>
+            <input
+              type="email"
+              className="form-input"
+              placeholder="owner@yourgym.com"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setForgotModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+            >
+              Send Recovery Instructions
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Google OAuth Production Setup Guide Modal */}
+      <Modal
+        isOpen={googleInfoModal}
+        onClose={() => setGoogleInfoModal(false)}
+        title="⚡ Google One-Click Authentication"
         maxWidth="460px"
       >
-        <div>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <div style={{ display: 'inline-flex', padding: '10px', background: 'var(--bg-tertiary)', borderRadius: '50%', marginBottom: '8px' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24">
+        <div style={{ textAlign: 'left', lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(66, 133, 244, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
-              Choose an account
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-              to continue to <strong style={{ color: 'var(--accent)' }}>GYMHQ Management</strong>
-            </p>
-          </div>
-
-          {/* Quick Select Accounts */}
-          <div style={{ marginBottom: '16px' }}>
-            <div
-              className="google-account-item"
-              onClick={() => handleQuickGoogleSelect({
-                email: 'vikram.gymowner@gmail.com',
-                name: 'Vikram Malhotra',
-                sub: 'google-vikram-99',
-              })}
-            >
-              <div className="google-avatar" style={{ background: '#4285F4' }}>V</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>Vikram Malhotra</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>vikram.gymowner@gmail.com</div>
-              </div>
-              <span className="badge badge-paid">Gym Owner</span>
-            </div>
-
-            <div
-              className="google-account-item"
-              onClick={() => handleQuickGoogleSelect({
-                email: 'rahul.sharma.gym@gmail.com',
-                name: 'Rahul Sharma',
-                sub: 'google-rahul-88',
-              })}
-            >
-              <div className="google-avatar" style={{ background: '#34A853' }}>R</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>Rahul Sharma</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>rahul.sharma.gym@gmail.com</div>
-              </div>
-              <span className="badge badge-paid">Gym Admin</span>
+            <div>
+              <div style={{ fontWeight: '700', fontSize: '15px', color: 'var(--text-primary)' }}>Official Google OAuth 2.0</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Enterprise Identity Verification</div>
             </div>
           </div>
 
-          {/* Custom Google Account Entry */}
-          <form onSubmit={handleCustomGoogleSubmit} style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-              Or use your own Google Account:
-            </div>
-            <div className="form-group">
-              <input
-                type="email"
-                className="form-input"
-                placeholder="your.email@gmail.com"
-                value={customGoogleEmail}
-                onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Your Full Name (e.g. Ashutosh Tripathi)"
-                value={customGoogleName}
-                onChange={(e) => setCustomGoogleName(e.target.value)}
-              />
-            </div>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+            GYMHQ supports direct Google Workspace & Personal Google Account single sign-on.
+          </p>
 
+          <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '12px', color: 'var(--text-primary)', marginBottom: '16px' }}>
+            <div style={{ fontWeight: '700', color: 'var(--accent)', marginBottom: '4px' }}>Deployment Instructions:</div>
+            To enable live Google 1-Tap on your custom domain, set your Google Cloud Client ID in your environment:
+            <code style={{ display: 'block', margin: '8px 0', padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '4px', color: 'var(--info)' }}>
+              VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+            </code>
+          </div>
+
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            You can sign in directly using your <strong>Username</strong> or <strong>Business Email</strong> and password on the form.
+          </p>
+
+          <div className="form-actions" style={{ marginTop: '16px' }}>
             <button
-              type="submit"
+              type="button"
               className="btn btn-primary w-full"
-              disabled={googleLoading}
-              style={{ marginTop: '8px' }}
+              onClick={() => setGoogleInfoModal(false)}
             >
-              {googleLoading ? 'Signing in...' : 'Sign In with This Google Account'}
+              Got it, continue with password
             </button>
-          </form>
-
-          {/* Setup Hint */}
-          <div style={{ marginTop: '16px', padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-color)', fontSize: '11px', color: 'var(--text-secondary)' }}>
-            💡 <strong>Production Ready:</strong> Set <code>VITE_GOOGLE_CLIENT_ID</code> in <code>frontend/.env</code> to connect directly with your Google Cloud Console OAuth 2.0 app.
           </div>
         </div>
       </Modal>

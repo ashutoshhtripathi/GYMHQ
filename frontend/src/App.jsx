@@ -9,6 +9,7 @@ import AttendancePage from './pages/AttendancePage';
 import PaymentsPage from './pages/PaymentsPage';
 import ReportsPage from './pages/ReportsPage';
 import GuidePage from './pages/GuidePage';
+import PlatformAdminPage from './pages/PlatformAdminPage';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="guide" element={<GuidePage />} />
+        <Route path="access-control" element={<PlatformAdminPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

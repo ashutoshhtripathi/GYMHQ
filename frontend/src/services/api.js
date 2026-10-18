@@ -25,6 +25,17 @@ export const api = {
   updateGymProfile: (data) => request('/auth/gym', { method: 'PUT', body: JSON.stringify(data) }),
   getMe: () => request('/auth/me'),
 
+  // Platform Super Admin & Access Control
+  getPlatformOverview: () => request('/platform/overview'),
+  getPlatformUsers: (params = {}) => {
+    const qs = new URLSearchParams();
+    if (params.search) qs.set('search', params.search);
+    if (params.status) qs.set('status', params.status);
+    return request(`/platform/users?${qs}`);
+  },
+  updateUserStatus: (id, is_active) => request(`/platform/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ is_active }) }),
+  deletePlatformUser: (id) => request(`/platform/users/${id}`, { method: 'DELETE' }),
+
   // Dashboard
   getDashboard: (month) => request(`/dashboard${month ? `?month=${month}` : ''}`),
 
