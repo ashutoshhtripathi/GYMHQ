@@ -662,7 +662,7 @@ export default function PlatformAdminPage() {
               <textarea
                 className="form-input"
                 rows="2"
-                placeholder="e.g. Paid ₹1,499 via Google Pay on Oct 18, 2026..."
+                placeholder="Enter notes (payment mode, reference ID, remarks)..."
                 value={subFormData.admin_notes}
                 onChange={(e) => setSubFormData({ ...subFormData, admin_notes: e.target.value })}
               />

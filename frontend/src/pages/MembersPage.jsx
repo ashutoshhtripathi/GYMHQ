@@ -434,7 +434,7 @@ export default function MembersPage() {
             <input
               type="text"
               className="form-input"
-              placeholder="e.g. Rahul Sharma"
+              placeholder="Enter member's full name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
@@ -446,7 +446,7 @@ export default function MembersPage() {
             <input
               type="tel"
               className="form-input"
-              placeholder="+91 98765 43210"
+              placeholder="Enter 10-digit mobile number"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               required
