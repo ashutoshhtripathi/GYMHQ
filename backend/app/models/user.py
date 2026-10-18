@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Numeric, Text, func
 from app.database import Base
 
 
 class User(Base):
-    """Application user for authentication and platform administration."""
+    """Application user for authentication, multi-tenancy, and SaaS subscription control."""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -21,3 +21,11 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Platform SaaS Billing & Access Control Fields
+    subscription_fee = Column(Numeric(10, 2), default=999.00, nullable=True)
+    subscription_plan = Column(String, default="Standard Monthly", nullable=True)
+    subscription_status = Column(String, default="active", nullable=False)  # active, expiring_soon, overdue, suspended
+    subscription_start = Column(Date, nullable=True)
+    subscription_end = Column(Date, nullable=True)
+    admin_notes = Column(Text, nullable=True)

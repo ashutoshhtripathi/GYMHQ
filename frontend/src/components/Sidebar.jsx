@@ -5,11 +5,14 @@ import GymHqLogo from './GymHqLogo';
 
 export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
   const { user, logout } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const gymName = user?.gym_name || localStorage.getItem('gymhq_gym_name') || 'My Gym';
+  const daysLeft = user?.days_remaining ?? 30;
 
-  const operationalNav = [
+  // Gym Operations navigation
+  const gymNav = [
     {
-      to: '/',
+      to: isSuperAdmin ? '/gym-overview' : '/',
       label: 'Gym Overview',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -89,31 +92,68 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
         onClick={onClose}
       />
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+        {/* Brand Bar */}
         <div 
           className="sidebar-brand" 
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: isSuperAdmin ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(22, 27, 34, 0.8) 100%)' : undefined,
+            borderBottom: isSuperAdmin ? '1px solid rgba(168, 85, 247, 0.3)' : undefined,
+          }}
           onClick={onOpenGymModal}
-          title="Click to customize gym profile"
+          title={isSuperAdmin ? "Master Headquarters" : "Click to customize gym profile"}
         >
           <GymHqLogo iconOnly size={36} />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className="sidebar-brand-text" style={{ fontSize: '15px', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {gymName}
+              {isSuperAdmin ? 'GYMHQ Master HQ' : gymName}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px' }}>
-              Admin Console ⚙️
+            <div style={{ fontSize: '10px', color: isSuperAdmin ? '#c084fc' : 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px' }}>
+              {isSuperAdmin ? '👑 Master Super Admin' : `Active License (${daysLeft}d left)`}
             </div>
           </div>
         </div>
 
         <nav className="sidebar-nav">
+          {/* SUPER ADMIN EXCLUSIVE SAAS PLATFORM SECTION */}
+          {isSuperAdmin && (
+            <div className="sidebar-section" style={{ marginBottom: '14px' }}>
+              <span className="sidebar-section-label" style={{ color: '#c084fc' }}>
+                🏢 Platform Business Control
+              </span>
+              <NavLink
+                to="/"
+                end
+                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                onClick={onClose}
+                style={{
+                  background: 'rgba(168, 85, 247, 0.12)',
+                  borderColor: 'rgba(168, 85, 247, 0.3)',
+                  color: '#e9d5ff',
+                  fontWeight: '700',
+                }}
+              >
+                <span className="sidebar-link-icon" style={{ color: '#c084fc' }}>
+                  👑
+                </span>
+                <span>SaaS Revenue & Gyms</span>
+              </NavLink>
+            </div>
+          )}
+
+          {/* GYM OPERATIONS SECTION */}
           <div className="sidebar-section">
-            <span className="sidebar-section-label">Operations</span>
-            {operationalNav.map((item) => (
+            <span className="sidebar-section-label">
+              {isSuperAdmin ? '🏋️ Gym Operations (Client Mode)' : 'Operations'}
+            </span>
+            {gymNav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === '/'}
+                end={item.to === (isSuperAdmin ? '/gym-overview' : '/')}
                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                 onClick={onClose}
               >
@@ -152,72 +192,45 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
               </NavLink>
             ))}
           </div>
-
-          {user?.role === 'super_admin' && (
-            <div className="sidebar-section" style={{ marginTop: '16px' }}>
-              <span className="sidebar-section-label" style={{ color: 'var(--accent)' }}>
-                Platform Master
-              </span>
-              <NavLink
-                to="/access-control"
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                onClick={onClose}
-              >
-                <span className="sidebar-link-icon" style={{ color: 'var(--accent)' }}>
-                  👑
-                </span>
-                <span>Access Control</span>
-              </NavLink>
-            </div>
-          )}
         </nav>
 
+        {/* Footer User Info */}
         <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--border-color)', background: 'rgba(0, 0, 0, 0.15)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            {user?.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt="Avatar"
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '1px solid var(--accent)',
-                  flexShrink: 0,
-                }}
-              />
-            ) : (
-              <div style={{
+            <div
+              style={{
                 width: '38px',
                 height: '38px',
                 borderRadius: '50%',
-                background: 'var(--accent-light)',
-                color: 'var(--accent)',
+                background: isSuperAdmin ? 'rgba(168, 85, 247, 0.2)' : 'var(--accent-light)',
+                color: isSuperAdmin ? '#c084fc' : 'var(--accent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '700',
                 fontSize: '15px',
-                border: '1px solid var(--accent)',
-                flexShrink: 0
-              }}>
-                {(user?.full_name || user?.username || 'O').charAt(0).toUpperCase()}
+                border: isSuperAdmin ? '1px solid #c084fc' : '1px solid var(--accent)',
+                flexShrink: 0,
+              }}
+            >
+              {isSuperAdmin ? '👑' : (user?.full_name ? user.full_name.charAt(0).toUpperCase() : user?.username.charAt(0).toUpperCase())}
+            </div>
+
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.full_name || user?.username}
               </div>
-            )}
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)' }} className="truncate">
-                {user?.full_name || gymName}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: '600' }} className="truncate">
-                Admin • {gymName}
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.email || (isSuperAdmin ? 'Master Super-Admin' : 'Gym Administrator')}
               </div>
             </div>
           </div>
-          <button 
+
+          <button
+            type="button"
+            className="btn btn-secondary w-full btn-sm"
             onClick={logout}
-            className="btn btn-secondary w-full" 
-            style={{ padding: '7px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>

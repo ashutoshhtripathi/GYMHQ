@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional
 
@@ -42,6 +42,12 @@ class UserResponse(BaseModel):
     is_active: bool = True
     last_login_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    subscription_fee: Optional[Decimal] = None
+    subscription_plan: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_start: Optional[date] = None
+    subscription_end: Optional[date] = None
+    days_remaining: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -71,7 +77,7 @@ class Token(BaseModel):
 
 
 class PlatformUserItem(BaseModel):
-    """Schema for platform owner user management view."""
+    """Schema for platform owner gym user management and SaaS subscription view."""
     id: int
     username: str
     email: Optional[str] = None
@@ -88,14 +94,28 @@ class PlatformUserItem(BaseModel):
     members_count: int = 0
     total_collections: Decimal = Decimal("0")
 
+    # Subscription Billing Fields
+    subscription_fee: Decimal = Decimal("999.00")
+    subscription_plan: str = "Standard Monthly"
+    subscription_status: str = "active"
+    subscription_start: Optional[date] = None
+    subscription_end: Optional[date] = None
+    days_remaining: int = 0
+    is_overdue: bool = False
+    admin_notes: Optional[str] = None
+
     model_config = {"from_attributes": True}
 
 
 class PlatformOverview(BaseModel):
-    """Platform-wide aggregate statistics for the super admin."""
+    """Platform-wide aggregate SaaS metrics and revenue statistics for the website owner."""
     total_gyms: int = 0
     active_gyms: int = 0
     suspended_gyms: int = 0
+    expiring_gyms_count: int = 0
+    overdue_gyms_count: int = 0
+    monthly_recurring_revenue: Decimal = Decimal("0")
+    pending_subscription_revenue: Decimal = Decimal("0")
     total_platform_athletes: int = 0
     total_platform_collections: Decimal = Decimal("0")
 
@@ -103,3 +123,15 @@ class PlatformOverview(BaseModel):
 class UserStatusUpdate(BaseModel):
     """Schema to activate or suspend access for a gym user."""
     is_active: bool
+
+
+class GymSubscriptionUpdate(BaseModel):
+    """Schema to update subscription pricing, duration, and access status for a gym."""
+    subscription_fee: Optional[Decimal] = None
+    subscription_plan: Optional[str] = None
+    subscription_status: Optional[str] = None
+    subscription_start: Optional[date] = None
+    subscription_end: Optional[date] = None
+    extend_days: Optional[int] = None  # e.g., +30, +90, +365 days
+    is_active: Optional[bool] = None
+    admin_notes: Optional[str] = None

@@ -21,6 +21,14 @@ function SuperAdminRoute({ children }) {
   return children;
 }
 
+function HomeRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'super_admin') {
+    return <PlatformAdminPage />;
+  }
+  return <DashboardPage />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -34,7 +42,8 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<DashboardPage />} />
+        <Route index element={<HomeRoute />} />
+        <Route path="gym-overview" element={<DashboardPage />} />
         <Route path="members" element={<MembersPage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="payments" element={<PaymentsPage />} />

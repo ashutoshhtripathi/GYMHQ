@@ -177,3 +177,25 @@ def test_platform_forbidden_for_regular_gym_owner():
 
     users_res = client.get("/api/platform/users", headers=headers)
     assert users_res.status_code == 403
+
+
+def test_platform_subscription_management():
+    """Verify platform owner can set gym subscription fee and extend validity."""
+    headers = _get_super_admin_headers()
+    # Update gym subscription fee to ₹1,499 and extend by 30 days
+    sub_res = client.put(
+        "/api/platform/users/2/subscription",
+        json={
+            "subscription_fee": 1499.00,
+            "subscription_plan": "Growth Pro",
+            "extend_days": 30,
+            "admin_notes": "Paid quarterly advance",
+        },
+        headers=headers,
+    )
+    assert sub_res.status_code == 200
+    data = sub_res.json()
+    assert float(data["subscription_fee"]) == 1499.00
+    assert data["subscription_plan"] == "Growth Pro"
+    assert data["days_remaining"] > 0
+    assert data["is_active"] is True

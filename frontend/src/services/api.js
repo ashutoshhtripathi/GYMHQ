@@ -34,6 +34,7 @@ export const api = {
     return request(`/platform/users?${qs}`);
   },
   updateUserStatus: (id, is_active) => request(`/platform/users/${id}/status`, { method: 'PUT', body: JSON.stringify({ is_active }) }),
+  updateGymSubscription: (id, data) => request(`/platform/users/${id}/subscription`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePlatformUser: (id) => request(`/platform/users/${id}`, { method: 'DELETE' }),
 
   // Dashboard

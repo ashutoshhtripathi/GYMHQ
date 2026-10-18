@@ -131,31 +131,69 @@ export default function Layout() {
               type="button"
               className="gym-branding-header"
               onClick={() => setGymModalOpen(true)}
-              title="Click to change your gym name, location, and UPI ID"
+              title="Click to customize gym profile"
+              style={{
+                borderColor: user?.role === 'super_admin' ? 'rgba(168, 85, 247, 0.4)' : undefined,
+              }}
             >
               <GymHqLogo iconOnly size={28} />
               <div className="gym-brand-info">
                 <div className="gym-brand-name">
-                  {currentGymName}
+                  {user?.role === 'super_admin' ? 'GYMHQ Master HQ' : currentGymName}
                   <span style={{ fontSize: '11px', color: 'var(--accent)', marginLeft: '2px' }}>✏️</span>
                 </div>
-                <div className="gym-brand-role-tag">
-                  <span className="pulse-dot" style={{ width: '5px', height: '5px' }}></span>
-                  Admin Mode • Live
+                <div className="gym-brand-role-tag" style={{ color: user?.role === 'super_admin' ? '#c084fc' : undefined }}>
+                  <span className="pulse-dot" style={{ width: '5px', height: '5px', background: user?.role === 'super_admin' ? '#c084fc' : undefined }}></span>
+                  {user?.role === 'super_admin' ? '👑 Master Super Admin' : 'Admin Mode • Live'}
                 </div>
               </div>
             </button>
 
-            <span className="status-indicator">
-              <span className="pulse-dot"></span>
-              Online
-            </span>
+            {user?.role === 'super_admin' ? (
+              <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', fontSize: '11px', fontWeight: '700' }}>
+                🏢 Multi-Tenant Controller
+              </span>
+            ) : user?.days_remaining !== undefined && user.days_remaining <= 7 ? (
+              <span className="badge" style={{ background: 'rgba(251, 191, 36, 0.15)', color: '#fbbf24', border: '1px solid #fbbf24', fontSize: '11px', fontWeight: '700' }}>
+                ⏰ {user.days_remaining}d Left
+              </span>
+            ) : (
+              <span className="status-indicator">
+                <span className="pulse-dot"></span>
+                Online
+              </span>
+            )}
+
             <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
               📅 {formattedDate}
             </span>
           </div>
 
           <div className="top-nav-right">
+            {user?.role === 'super_admin' && (
+              <>
+                <Link
+                  to="/"
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', borderColor: '#c084fc' }}
+                  title="Platform Owner SaaS & Revenue Control"
+                >
+                  <span>👑</span>
+                  SaaS Revenue & Gyms
+                </Link>
+
+                <Link
+                  to="/gym-overview"
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title="Switch to Client Gym Overview"
+                >
+                  <span>🏋️</span>
+                  Gym Overview
+                </Link>
+              </>
+            )}
+
             <button
               onClick={handleOpenQuickCheckIn}
               className="btn btn-primary btn-sm"
@@ -168,18 +206,6 @@ export default function Layout() {
               Fast Check-In
             </button>
 
-            {user?.role === 'super_admin' && (
-              <Link
-                to="/access-control"
-                className="btn btn-secondary btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                title="Platform Super Admin & Access Control"
-              >
-                <span>👑</span>
-                Access Control
-              </Link>
-            )}
-
             <Link
               to="/guide"
               className="btn btn-secondary btn-sm"
@@ -190,6 +216,32 @@ export default function Layout() {
             </Link>
           </div>
         </div>
+
+        {/* Regular Gym Owner Subscription Alert Banner (if expiring soon) */}
+        {user?.role !== 'super_admin' && user?.days_remaining !== undefined && user.days_remaining <= 7 && (
+          <div style={{
+            background: 'rgba(251, 191, 36, 0.12)',
+            border: '1px solid rgba(251, 191, 36, 0.35)',
+            color: '#fbbf24',
+            padding: '10px 18px',
+            borderRadius: '10px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '13px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>⏰</span>
+              <span>
+                <strong>Subscription Notice:</strong> Your GYMHQ software license expires in <strong>{user.days_remaining} days</strong> ({user.subscription_end || 'soon'}). Please contact your platform administrator to renew.
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', background: 'rgba(251, 191, 36, 0.2)', padding: '3px 8px', borderRadius: '4px', fontWeight: '700' }}>
+              Renewal Due
+            </span>
+          </div>
+        )}
 
         <Outlet />
 

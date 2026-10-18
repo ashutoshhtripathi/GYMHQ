@@ -45,6 +45,15 @@ def verify_google_credential(credential: str) -> dict:
     return {}
 
 
+def _to_user_response(user: User) -> UserResponse:
+    from datetime import date
+    today = date.today()
+    days_rem = (user.subscription_end - today).days if user.subscription_end else 30
+    resp = UserResponse.model_validate(user)
+    resp.days_remaining = days_rem
+    return resp
+
+
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user."""
@@ -65,6 +74,9 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
                 detail="Email already registered",
             )
 
+    from datetime import date, timedelta
+    today = date.today()
+
     user = User(
         username=data.username,
         email=data.email,
@@ -74,6 +86,11 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
         gym_phone=data.gym_phone,
         role="admin",
         is_active=True,
+        subscription_fee=Decimal("999.00"),
+        subscription_plan="Standard Monthly",
+        subscription_status="active",
+        subscription_start=today,
+        subscription_end=today + timedelta(days=30),
     )
     db.add(user)
     db.commit()
@@ -82,7 +99,7 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.username})
     return Token(
         access_token=access_token,
-        user=UserResponse.model_validate(user),
+        user=_to_user_response(user),
     )
 
 
@@ -113,7 +130,7 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.username})
     return Token(
         access_token=access_token,
-        user=UserResponse.model_validate(user),
+        user=_to_user_response(user),
     )
 
 
@@ -229,7 +246,7 @@ def get_me(authorization: Optional[str] = Header(None), db: Session = Depends(ge
     user = _resolve_user(authorization, db)
     if not user:
         raise HTTPException(status_code=404, detail="No users found")
-    return UserResponse.model_validate(user)
+    return _to_user_response(user)
 
 
 @router.put("/gym", response_model=UserResponse)
@@ -250,4 +267,4 @@ def update_gym_profile(data: GymProfileUpdate, authorization: Optional[str] = He
 
     db.commit()
     db.refresh(user)
-    return UserResponse.model_validate(user)
+    return _to_user_response(user)
