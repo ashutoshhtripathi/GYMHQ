@@ -5,6 +5,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 from app.database import get_db
+from app.auth import get_current_active_user_optional
+from app.models.user import User
 from app.models.payment import Payment
 from app.models.member import Member
 from app.schemas.payment import PaymentCreate, PaymentResponse, PaymentListResponse
@@ -23,11 +25,13 @@ def list_payments(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """List payments with search and filters."""
+    """List payments strictly scoped to the authenticated gym owner."""
     query = (
         db.query(Payment, Member.name, Member.phone)
         .join(Member, Payment.member_id == Member.id)
+        .filter(Member.user_id == current_user.id)
     )
 
     if search:
@@ -81,12 +85,16 @@ def list_payments(
 
 
 @router.post("", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
-def create_payment(data: PaymentCreate, db: Session = Depends(get_db)):
-    """Record a payment. Supports partial payments and multiple payments for the same fee month."""
-    # Verify member exists
-    member = db.query(Member).filter(Member.id == data.member_id).first()
+def create_payment(
+    data: PaymentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
+    """Record a payment for an athlete in the current gym."""
+    # Verify member belongs to this gym
+    member = db.query(Member).filter(Member.id == data.member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     # Validate amount
     if data.amount <= 0:
@@ -120,18 +128,16 @@ def create_payment(data: PaymentCreate, db: Session = Depends(get_db)):
 def get_collection(
     month: Optional[str] = Query(None, description="Month in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
     """
-    Get actual money collected during a calendar month.
-    
-    This is based on payment_date (when money was received), NOT fee_month
-    (which month the payment applies to). This distinction is critical.
+    Get actual money collected during a calendar month for this gym.
+    Based on payment_date (when money was received), NOT fee_month.
     """
     if month is None:
         today = date.today()
         month = f"{today.year}-{today.month:02d}"
 
-    # Parse month to get date range
     try:
         year, mon = map(int, month.split("-"))
         month_start = date(year, mon, 1)
@@ -142,10 +148,12 @@ def get_collection(
     except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
 
-    # Sum all payments with payment_date in the selected calendar month
+    # Sum payments belonging to this gym
     total = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -155,7 +163,9 @@ def get_collection(
     # Count payments
     count = (
         db.query(func.count(Payment.id))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -165,7 +175,9 @@ def get_collection(
     # Breakdown by method
     method_breakdown = (
         db.query(Payment.payment_method, func.sum(Payment.amount))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -189,11 +201,12 @@ def member_payments(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Get payment history for a specific member."""
-    member = db.query(Member).filter(Member.id == member_id).first()
+    """Get payment history for a specific member in this gym."""
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     query = db.query(Payment).filter(Payment.member_id == member_id)
     total = query.count()

@@ -8,6 +8,8 @@ from typing import Optional
 import csv
 import io
 from app.database import get_db
+from app.auth import get_current_active_user_optional
+from app.models.user import User
 from app.models.member import Member
 from app.models.attendance import Attendance
 from app.models.payment import Payment
@@ -31,17 +33,7 @@ def _parse_month(month_str: str):
 
 
 def _member_overlaps_month(member, month_start, month_end):
-    """
-    Check if a member's membership period overlaps with the given month.
-
-    Policy:
-    - If membership_start and membership_end are both set, the member must have
-      an active membership overlapping the month: membership_start < month_end
-      AND membership_end >= month_start.
-    - If only membership_start is set, member is considered active from that date.
-    - If neither is set, fall back to status check only.
-    - Members joining or leaving mid-month are charged the full monthly_fee (no prorating).
-    """
+    """Check if a member's membership period overlaps with the given month."""
     ms = member.membership_start
     me = member.membership_end
 
@@ -50,7 +42,6 @@ def _member_overlaps_month(member, month_start, month_end):
     elif ms:
         return ms < month_end
     else:
-        # No membership dates — include if active
         return member.status == "active"
 
 
@@ -58,25 +49,19 @@ def _member_overlaps_month(member, month_start, month_end):
 def monthly_fee_report(
     month: str = Query(..., description="Month in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """
-    Monthly fee report showing expected vs paid per member.
-
-    Policy:
-    - expected_fees: Sum of monthly_fee for members whose membership overlaps the month
-      and who are not 'inactive'.
-    - total_paid: Sum of payments where fee_month = selected month.
-    - outstanding_dues: expected_fees - total_paid (min 0).
-    - No prorating for mid-month joins/departures.
-    - Payments applied to other fee_months are NOT counted.
-    """
+    """Monthly fee report showing expected vs paid per member for current gym."""
     _, _, month_start, month_end = _parse_month(month)
 
     members = (
         db.query(Member)
-        .filter(Member.status != "inactive")
-        .filter(Member.monthly_fee.isnot(None))
-        .filter(Member.monthly_fee > 0)
+        .filter(
+            Member.user_id == current_user.id,
+            Member.status != "inactive",
+            Member.monthly_fee.isnot(None),
+            Member.monthly_fee > 0,
+        )
         .all()
     )
 
@@ -91,7 +76,6 @@ def monthly_fee_report(
         fee = member.monthly_fee or Decimal("0")
         total_expected += fee
 
-        # Sum payments for this member for this fee_month only
         paid = (
             db.query(func.coalesce(func.sum(Payment.amount), 0))
             .filter(
@@ -124,7 +108,6 @@ def monthly_fee_report(
             payment_status=pmt_status,
         ))
 
-    # Sort: unpaid first, then partial, then paid
     status_order = {"unpaid": 0, "partial": 1, "paid": 2}
     member_details.sort(key=lambda x: status_order.get(x.payment_status, 3))
 
@@ -143,11 +126,13 @@ def attendance_report(
     date_to: Optional[date] = Query(None),
     member_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Attendance report with date and member filters."""
+    """Attendance report with date and member filters for current gym."""
     query = (
         db.query(Attendance, Member.name, Member.phone)
         .join(Member, Attendance.member_id == Member.id)
+        .filter(Member.user_id == current_user.id)
     )
 
     if date_from:
@@ -183,21 +168,22 @@ def expiry_report(
     status_filter: Optional[str] = Query(None, alias="status"),
     days_ahead: int = Query(30, description="Show expiries within N days"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Membership expiry report."""
+    """Membership expiry report for current gym."""
     today = date.today()
     from datetime import timedelta
     cutoff = today + timedelta(days=days_ahead)
 
     query = db.query(Member).filter(
+        Member.user_id == current_user.id,
         Member.membership_end.isnot(None),
+        Member.membership_end <= cutoff,
     )
 
     if status_filter:
         query = query.filter(Member.status == status_filter)
 
-    # Show: already expired OR expiring within days_ahead
-    query = query.filter(Member.membership_end <= cutoff)
     results = query.order_by(Member.membership_end.asc()).all()
 
     entries = [
@@ -220,16 +206,16 @@ def expiry_report(
 def collection_report(
     month: str = Query(..., description="Month in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """
-    Monthly actual collection report.
-    Based on payment_date (when money was received), NOT fee_month.
-    """
+    """Monthly actual collection report for current gym."""
     _, _, month_start, month_end = _parse_month(month)
 
     total = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -238,7 +224,9 @@ def collection_report(
 
     count = (
         db.query(func.count(Payment.id))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -247,7 +235,9 @@ def collection_report(
 
     method_data = (
         db.query(Payment.payment_method, func.sum(Payment.amount))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -269,10 +259,9 @@ def collection_report(
 def dues_report(
     month: Optional[str] = Query(None, description="Fee month in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """
-    Members with outstanding dues. Generates reminder messages.
-    """
+    """Members with outstanding dues in current gym."""
     today = date.today()
     if month is None:
         month = f"{today.year}-{today.month:02d}"
@@ -282,6 +271,7 @@ def dues_report(
     members = (
         db.query(Member)
         .filter(
+            Member.user_id == current_user.id,
             Member.status.in_(["active", "expired"]),
             Member.monthly_fee.isnot(None),
             Member.monthly_fee > 0,
@@ -330,9 +320,10 @@ def dues_report(
 def export_monthly_fees_csv(
     month: str = Query(..., description="Month in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Export monthly fee report as CSV."""
-    report = monthly_fee_report(month=month, db=db)
+    """Export monthly fee report as CSV for current gym."""
+    report = monthly_fee_report(month=month, db=db, current_user=current_user)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -364,9 +355,10 @@ def export_attendance_csv(
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Export attendance report as CSV."""
-    report = attendance_report(date_from=date_from, date_to=date_to, db=db)
+    """Export attendance report as CSV for current gym."""
+    report = attendance_report(date_from=date_from, date_to=date_to, db=db, current_user=current_user)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -387,9 +379,10 @@ def export_attendance_csv(
 def export_collection_csv(
     month: str = Query(..., description="Month in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Export collection report as CSV."""
-    report = collection_report(month=month, db=db)
+    """Export collection report as CSV for current gym."""
+    report = collection_report(month=month, db=db, current_user=current_user)
 
     output = io.StringIO()
     writer = csv.writer(output)

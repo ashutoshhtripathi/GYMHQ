@@ -12,7 +12,28 @@ from app.auth import hash_password
 def seed(with_samples: bool = False):
     db = SessionLocal()
     try:
-        # 1. Admin user
+        # 1. Master Platform Owner
+        owner = db.query(User).filter((User.username == "owner") | (User.email == "owner@gymhq.com")).first()
+        if not owner:
+            owner = User(
+                username="owner",
+                email="owner@gymhq.com",
+                full_name="GYMHQ Platform Owner",
+                password_hash=hash_password("GymHQ@Owner2026!"),
+                gym_name="GYMHQ Headquarters",
+                role="super_admin",
+                is_active=True,
+            )
+            db.add(owner)
+            db.commit()
+            print("✅ Created master owner user (owner@gymhq.com / GymHQ@Owner2026!)")
+        else:
+            owner.role = "super_admin"
+            owner.is_active = True
+            db.commit()
+            print("ℹ️ Master owner user already exists and verified as super_admin")
+
+        # 2. Admin User
         admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
             admin = User(
@@ -20,18 +41,24 @@ def seed(with_samples: bool = False):
                 email="admin@gymhq.com",
                 password_hash=hash_password("adminpassword123"),
                 gym_name="IronCore Gym HQ",
-                role="admin",
+                role="super_admin",
+                is_active=True,
             )
             db.add(admin)
             db.commit()
             print("✅ Created default admin user (admin / adminpassword123)")
         else:
-            print("ℹ️ Admin user already exists")
+            admin.role = "super_admin"
+            admin.is_active = True
+            db.commit()
+            print("ℹ️ Admin user already exists and verified as super_admin")
 
+        # 3. Optional sample members
         if with_samples and db.query(Member).count() == 0:
             today = datetime.date.today()
             sample_members = [
                 {
+                    "user_id": admin.id,
                     "name": "Rahul Sharma",
                     "phone": "+91-9876500101",
                     "plan": "Monthly",
@@ -42,6 +69,7 @@ def seed(with_samples: bool = False):
                     "monthly_fee": Decimal("1500.00"),
                 },
                 {
+                    "user_id": admin.id,
                     "name": "Priya Patel",
                     "phone": "+91-9876500102",
                     "plan": "Quarterly",

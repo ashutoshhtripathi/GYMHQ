@@ -1,0 +1,22 @@
+{
+  "name": "gymhq-workspace",
+  "version": "1.0.0",
+  "description": "GYMHQ — Commercial Gym Management SaaS Platform",
+  "scripts": {
+    "dev": "bash ./start.sh",
+    "start": "bash ./start.sh",
+    "frontend": "npm run dev --prefix frontend",
+    "backend": "cd backend && uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "build": "npm run build --prefix frontend",
+    "test:backend": "cd backend && python3 -m pytest tests/test_api.py -v"
+  },
+  "keywords": [
+    "gym",
+    "management",
+    "saas",
+    "fastapi",
+    "react"
+  ],
+  "author": "GYMHQ",
+  "license": "Private"
+}

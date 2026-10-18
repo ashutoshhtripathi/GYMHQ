@@ -110,9 +110,19 @@ def test_google_auth():
     assert data["user"]["role"] == "admin"
 
 
+def _get_super_admin_headers():
+    login_res = client.post(
+        "/api/auth/login",
+        json={"username": "admin", "password": "adminpassword123"}
+    )
+    token = login_res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_platform_overview():
-    """Verify platform overview statistics endpoint."""
-    response = client.get("/api/platform/overview")
+    """Verify platform overview statistics endpoint requires super_admin."""
+    headers = _get_super_admin_headers()
+    response = client.get("/api/platform/overview", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert "total_gyms" in data
@@ -121,8 +131,9 @@ def test_platform_overview():
 
 
 def test_platform_users():
-    """Verify platform user listing and search endpoint."""
-    response = client.get("/api/platform/users")
+    """Verify platform user listing requires super_admin."""
+    headers = _get_super_admin_headers()
+    response = client.get("/api/platform/users", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -132,11 +143,37 @@ def test_platform_users():
 
 def test_platform_status_toggle():
     """Verify platform user activation toggle."""
-    # Toggle user 2 status to False then True
-    response = client.put("/api/platform/users/2/status", json={"is_active": False})
+    headers = _get_super_admin_headers()
+    response = client.put("/api/platform/users/2/status", json={"is_active": False}, headers=headers)
     assert response.status_code == 200
     assert response.json()["is_active"] is False
 
-    response2 = client.put("/api/platform/users/2/status", json={"is_active": True})
+    response2 = client.put("/api/platform/users/2/status", json={"is_active": True}, headers=headers)
     assert response2.status_code == 200
     assert response2.json()["is_active"] is True
+
+
+def test_platform_forbidden_for_regular_gym_owner():
+    """Verify regular gym owners get 403 Forbidden when attempting to access platform admin."""
+    # Register/login a regular gym owner
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": "isolated_gym_owner",
+            "password": "ownerpassword123",
+            "gym_name": "Isolated Fitness Club",
+        }
+    )
+    reg_login = client.post(
+        "/api/auth/login",
+        json={"username": "isolated_gym_owner", "password": "ownerpassword123"}
+    )
+    token = reg_login.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Must be 403 Forbidden
+    overview_res = client.get("/api/platform/overview", headers=headers)
+    assert overview_res.status_code == 403
+
+    users_res = client.get("/api/platform/users", headers=headers)
+    assert users_res.status_code == 403

@@ -10,6 +10,16 @@ import PaymentsPage from './pages/PaymentsPage';
 import ReportsPage from './pages/ReportsPage';
 import GuidePage from './pages/GuidePage';
 import PlatformAdminPage from './pages/PlatformAdminPage';
+import { useAuth } from './context/AuthContext';
+
+function SuperAdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.role !== 'super_admin') {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
 
 export default function App() {
   return (
@@ -30,7 +40,14 @@ export default function App() {
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="guide" element={<GuidePage />} />
-        <Route path="access-control" element={<PlatformAdminPage />} />
+        <Route
+          path="access-control"
+          element={
+            <SuperAdminRoute>
+              <PlatformAdminPage />
+            </SuperAdminRoute>
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

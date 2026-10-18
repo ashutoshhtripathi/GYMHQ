@@ -5,6 +5,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Optional
 from app.database import get_db
+from app.auth import get_current_active_user_optional
+from app.models.user import User
 from app.models.member import Member
 from app.models.attendance import Attendance
 from app.models.payment import Payment
@@ -20,13 +22,10 @@ router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 def get_dashboard(
     month: Optional[str] = Query(None, description="Month for collection in YYYY-MM format"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
     """
-    Get dashboard data with real database aggregations.
-    
-    - current_month_collection: Sum of payments where payment_date falls in the selected month
-    - stats: Actual counts from the members table
-    - recent items: Last 10 entries from each table
+    Get dashboard data with real database aggregations strictly scoped to the authenticated gym owner.
     """
     today = date.today()
 
@@ -46,16 +45,17 @@ def get_dashboard(
         month_start = date(year, mon, 1)
         month_end = date(year, mon + 1, 1) if mon < 12 else date(year + 1, 1, 1)
 
-    # Stats
-    total_members = db.query(func.count(Member.id)).scalar() or 0
+    # Stats strictly for current gym owner
+    total_members = db.query(func.count(Member.id)).filter(Member.user_id == current_user.id).scalar() or 0
     active_members = (
         db.query(func.count(Member.id))
-        .filter(Member.status == "active")
+        .filter(Member.status == "active", Member.user_id == current_user.id)
         .scalar() or 0
     )
     expired_memberships = (
         db.query(func.count(Member.id))
         .filter(
+            Member.user_id == current_user.id,
             Member.membership_end < today,
             Member.status.in_(["active", "expired"]),
         )
@@ -63,12 +63,11 @@ def get_dashboard(
     )
 
     # Members with pending dues for selected month
-    # A member has pending dues if they are active and their total payments
-    # for the fee_month < their monthly_fee
     pending_dues_count = 0
     active_with_fee = (
         db.query(Member)
         .filter(
+            Member.user_id == current_user.id,
             Member.status == "active",
             Member.monthly_fee.isnot(None),
             Member.monthly_fee > 0,
@@ -94,10 +93,12 @@ def get_dashboard(
         pending_dues_count=pending_dues_count,
     )
 
-    # Current month collection: based on payment_date in the selected month
+    # Current month collection: based on payment_date in the selected month for this gym
     current_month_collection = (
         db.query(func.coalesce(func.sum(Payment.amount), 0))
+        .join(Member, Payment.member_id == Member.id)
         .filter(
+            Member.user_id == current_user.id,
             Payment.payment_date >= month_start,
             Payment.payment_date < month_end,
         )
@@ -108,6 +109,7 @@ def get_dashboard(
     recent_payments_raw = (
         db.query(Payment, Member.name)
         .join(Member, Payment.member_id == Member.id)
+        .filter(Member.user_id == current_user.id)
         .order_by(Payment.payment_date.desc(), Payment.created_at.desc())
         .limit(10)
         .all()
@@ -129,6 +131,7 @@ def get_dashboard(
     expiring_raw = (
         db.query(Member)
         .filter(
+            Member.user_id == current_user.id,
             Member.membership_end.isnot(None),
             Member.membership_end <= thirty_days_from_now,
             Member.status.in_(["active", "expired"]),
@@ -153,6 +156,7 @@ def get_dashboard(
     recent_att_raw = (
         db.query(Attendance, Member.name)
         .join(Member, Attendance.member_id == Member.id)
+        .filter(Member.user_id == current_user.id)
         .order_by(Attendance.attendance_date.desc(), Attendance.checked_in_at.desc())
         .limit(10)
         .all()
@@ -166,14 +170,15 @@ def get_dashboard(
         for a, name in recent_att_raw
     ]
 
-    # Today's attendance count
+    # Today's attendance count for this gym
     today_attendance_count = (
         db.query(func.count(Attendance.id))
-        .filter(Attendance.attendance_date == today)
+        .join(Member, Attendance.member_id == Member.id)
+        .filter(Member.user_id == current_user.id, Attendance.attendance_date == today)
         .scalar() or 0
     )
 
-    # 6-Month Historical Monthly Trend (Rolling 6 months up to selected month)
+    # 6-Month Historical Monthly Trend (Rolling 6 months up to selected month for this gym)
     monthly_graph = []
     for i in range(5, -1, -1):
         total_months = year * 12 + (mon - 1) - i
@@ -188,19 +193,33 @@ def get_dashboard(
 
         m_coll = (
             db.query(func.coalesce(func.sum(Payment.amount), 0))
-            .filter(Payment.payment_date >= m_start, Payment.payment_date < m_end)
+            .join(Member, Payment.member_id == Member.id)
+            .filter(
+                Member.user_id == current_user.id,
+                Payment.payment_date >= m_start,
+                Payment.payment_date < m_end,
+            )
             .scalar()
         ) or 0
 
         m_members = (
             db.query(func.count(Member.id))
-            .filter(Member.joining_date >= m_start, Member.joining_date < m_end)
+            .filter(
+                Member.user_id == current_user.id,
+                Member.joining_date >= m_start,
+                Member.joining_date < m_end,
+            )
             .scalar()
         ) or 0
 
         m_att = (
             db.query(func.count(Attendance.id))
-            .filter(Attendance.attendance_date >= m_start, Attendance.attendance_date < m_end)
+            .join(Member, Attendance.member_id == Member.id)
+            .filter(
+                Member.user_id == current_user.id,
+                Attendance.attendance_date >= m_start,
+                Attendance.attendance_date < m_end,
+            )
             .scalar()
         ) or 0
 

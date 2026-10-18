@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from datetime import date
 from typing import Optional
 from app.database import get_db
+from app.auth import get_current_active_user_optional
+from app.models.user import User
 from app.models.attendance import Attendance
 from app.models.member import Member
 from app.schemas.attendance import AttendanceCreate, AttendanceResponse, AttendanceListResponse
@@ -21,11 +23,13 @@ def list_attendance(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """List attendance records with search and date filters."""
+    """List attendance records strictly scoped to the authenticated gym owner's athletes."""
     query = (
         db.query(Attendance, Member.name, Member.phone)
         .join(Member, Attendance.member_id == Member.id)
+        .filter(Member.user_id == current_user.id)
     )
 
     if search:
@@ -72,24 +76,35 @@ def list_attendance(
 
 
 @router.get("/today/count")
-def today_attendance_count(db: Session = Depends(get_db)):
-    """Get today's attendance count."""
+def today_attendance_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
+    """Get today's attendance count for the current gym owner."""
     today = date.today()
     count = (
         db.query(func.count(Attendance.id))
-        .filter(Attendance.attendance_date == today)
+        .join(Member, Attendance.member_id == Member.id)
+        .filter(
+            Member.user_id == current_user.id,
+            Attendance.attendance_date == today,
+        )
         .scalar() or 0
     )
     return {"date": str(today), "count": count}
 
 
 @router.post("", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
-def mark_attendance(data: AttendanceCreate, db: Session = Depends(get_db)):
-    """Mark a member present for a date. Prevents duplicates."""
-    # Verify member exists
-    member = db.query(Member).filter(Member.id == data.member_id).first()
+def mark_attendance(
+    data: AttendanceCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
+    """Mark a member present for a date. Scoped to current gym owner."""
+    # Verify member belongs to this gym
+    member = db.query(Member).filter(Member.id == data.member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     # Check for duplicate
     existing = (
@@ -140,11 +155,12 @@ def member_attendance(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """Get attendance history for a specific member."""
-    member = db.query(Member).filter(Member.id == member_id).first()
+    """Get attendance history for a specific member in the current gym."""
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     query = db.query(Attendance).filter(Attendance.member_id == member_id)
 

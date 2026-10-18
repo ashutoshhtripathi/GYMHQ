@@ -4,6 +4,7 @@ from sqlalchemy import func, or_
 from decimal import Decimal
 from typing import Optional, List
 from app.database import get_db
+from app.auth import require_super_admin
 from app.models.user import User
 from app.models.member import Member
 from app.models.payment import Payment
@@ -13,7 +14,10 @@ router = APIRouter(prefix="/api/platform", tags=["Platform Super Admin"])
 
 
 @router.get("/overview", response_model=PlatformOverview)
-def get_platform_overview(db: Session = Depends(get_db)):
+def get_platform_overview(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
     """Get high-level platform SaaS metrics for the platform owner."""
     total_gyms = db.query(func.count(User.id)).scalar() or 0
     active_gyms = db.query(func.count(User.id)).filter(User.is_active == True).scalar() or 0
@@ -35,6 +39,7 @@ def get_platform_users(
     search: Optional[str] = Query(None, description="Search by username, full name, email, or gym name"),
     status: Optional[str] = Query(None, description="Filter by status: 'active' or 'suspended'"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
 ):
     """List all registered gym owners using the platform with live operational stats."""
     query = db.query(User)
@@ -57,13 +62,16 @@ def get_platform_users(
 
     users = query.order_by(User.id.asc()).all()
 
-    total_members = db.query(func.count(Member.id)).scalar() or 0
-    total_coll = db.query(func.coalesce(func.sum(Payment.amount), 0)).scalar() or Decimal("0")
-
     result = []
     for u in users:
-        m_count = total_members if u.username == "admin" else 0
-        c_amt = total_coll if u.username == "admin" else Decimal("0")
+        # Calculate isolated metrics per gym owner
+        m_count = db.query(func.count(Member.id)).filter(Member.user_id == u.id).scalar() or 0
+        c_amt = (
+            db.query(func.coalesce(func.sum(Payment.amount), 0))
+            .join(Member, Payment.member_id == Member.id)
+            .filter(Member.user_id == u.id)
+            .scalar() or Decimal("0")
+        )
 
         result.append(
             PlatformUserItem(
@@ -89,16 +97,21 @@ def get_platform_users(
 
 
 @router.put("/users/{user_id}/status", response_model=UserResponse)
-def update_user_status(user_id: int, data: UserStatusUpdate, db: Session = Depends(get_db)):
+def update_user_status(
+    user_id: int,
+    data: UserStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
     """Toggle access on/off for a gym owner. If set to is_active=False, the user is barred from logging in."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.username == "admin" and not data.is_active:
+    if (user.username in ["admin", "owner"] or user.role == "super_admin") and not data.is_active:
         raise HTTPException(
             status_code=400,
-            detail="Cannot suspend the root platform administrator account.",
+            detail="Cannot suspend platform master super administrator account.",
         )
 
     user.is_active = data.is_active
@@ -108,16 +121,20 @@ def update_user_status(user_id: int, data: UserStatusUpdate, db: Session = Depen
 
 
 @router.delete("/users/{user_id}")
-def delete_platform_user(user_id: int, db: Session = Depends(get_db)):
+def delete_platform_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
     """Remove a gym owner or spam account from the platform."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.username == "admin":
+    if user.username in ["admin", "owner"] or user.role == "super_admin":
         raise HTTPException(
             status_code=400,
-            detail="Cannot delete the root platform administrator account.",
+            detail="Cannot delete platform master super administrator account.",
         )
 
     db.delete(user)

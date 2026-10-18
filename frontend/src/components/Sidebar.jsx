@@ -153,21 +153,23 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
             ))}
           </div>
 
-          <div className="sidebar-section" style={{ marginTop: '16px' }}>
-            <span className="sidebar-section-label" style={{ color: 'var(--accent)' }}>
-              Platform Owner
-            </span>
-            <NavLink
-              to="/access-control"
-              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-              onClick={onClose}
-            >
-              <span className="sidebar-link-icon" style={{ color: 'var(--accent)' }}>
-                👑
+          {user?.role === 'super_admin' && (
+            <div className="sidebar-section" style={{ marginTop: '16px' }}>
+              <span className="sidebar-section-label" style={{ color: 'var(--accent)' }}>
+                Platform Master
               </span>
-              <span>Access Control</span>
-            </NavLink>
-          </div>
+              <NavLink
+                to="/access-control"
+                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                onClick={onClose}
+              >
+                <span className="sidebar-link-icon" style={{ color: 'var(--accent)' }}>
+                  👑
+                </span>
+                <span>Access Control</span>
+              </NavLink>
+            </div>
+          )}
         </nav>
 
         <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid var(--border-color)', background: 'rgba(0, 0, 0, 0.15)' }}>

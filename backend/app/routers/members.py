@@ -4,6 +4,8 @@ from sqlalchemy import func, or_
 from decimal import Decimal
 from typing import Optional
 from app.database import get_db
+from app.auth import get_current_active_user_optional
+from app.models.user import User
 from app.models.member import Member
 from app.models.attendance import Attendance
 from app.models.payment import Payment
@@ -21,9 +23,10 @@ def list_members(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
-    """List all members with search and pagination."""
-    query = db.query(Member)
+    """List members strictly scoped to the authenticated gym owner."""
+    query = db.query(Member).filter(Member.user_id == current_user.id)
 
     if search:
         search_term = f"%{search}%"
@@ -54,11 +57,15 @@ def list_members(
 
 
 @router.get("/{member_id}", response_model=MemberDetailResponse)
-def get_member(member_id: int, db: Session = Depends(get_db)):
-    """Get a single member with details."""
-    member = db.query(Member).filter(Member.id == member_id).first()
+def get_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
+    """Get a single member with details for the current gym owner."""
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     attendance_count = (
         db.query(func.count(Attendance.id))
@@ -84,16 +91,24 @@ def get_member(member_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
-def create_member(data: MemberCreate, db: Session = Depends(get_db)):
-    """Create a new member. Phone must be unique."""
-    existing = db.query(Member).filter(Member.phone == data.phone).first()
+def create_member(
+    data: MemberCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
+    """Create a new member scoped to current gym owner. Phone must be unique within this gym."""
+    existing = db.query(Member).filter(
+        Member.phone == data.phone,
+        Member.user_id == current_user.id,
+    ).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"A member with phone {data.phone} already exists",
+            detail=f"A member with phone {data.phone} already exists in your gym",
         )
 
     member = Member(
+        user_id=current_user.id,
         name=data.name,
         phone=data.phone,
         plan=data.plan,
@@ -110,24 +125,30 @@ def create_member(data: MemberCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{member_id}", response_model=MemberResponse)
-def update_member(member_id: int, data: MemberUpdate, db: Session = Depends(get_db)):
+def update_member(
+    member_id: int,
+    data: MemberUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
     """Update a member's details."""
-    member = db.query(Member).filter(Member.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     update_data = data.model_dump(exclude_unset=True)
 
-    # Check phone uniqueness if phone is being changed
+    # Check phone uniqueness within this gym if phone is being changed
     if "phone" in update_data and update_data["phone"] != member.phone:
         existing = db.query(Member).filter(
             Member.phone == update_data["phone"],
             Member.id != member_id,
+            Member.user_id == current_user.id,
         ).first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"A member with phone {update_data['phone']} already exists",
+                detail=f"A member with phone {update_data['phone']} already exists in your gym",
             )
 
     for key, value in update_data.items():
@@ -139,11 +160,15 @@ def update_member(member_id: int, data: MemberUpdate, db: Session = Depends(get_
 
 
 @router.patch("/{member_id}/deactivate", response_model=MemberResponse)
-def deactivate_member(member_id: int, db: Session = Depends(get_db)):
+def deactivate_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
     """Deactivate a member (soft delete)."""
-    member = db.query(Member).filter(Member.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     member.status = "inactive"
     db.commit()
@@ -152,11 +177,15 @@ def deactivate_member(member_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{member_id}/activate", response_model=MemberResponse)
-def activate_member(member_id: int, db: Session = Depends(get_db)):
+def activate_member(
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
+):
     """Reactivate an inactive member."""
-    member = db.query(Member).filter(Member.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     member.status = "active"
     db.commit()
@@ -169,14 +198,15 @@ def renew_membership(
     member_id: int,
     data: MemberUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user_optional),
 ):
     """
     Renew a member's membership. Updates membership dates and plan label.
     Does NOT overwrite historical payment records.
     """
-    member = db.query(Member).filter(Member.id == member_id).first()
+    member = db.query(Member).filter(Member.id == member_id, Member.user_id == current_user.id).first()
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
+        raise HTTPException(status_code=404, detail="Member not found in your gym")
 
     update_data = data.model_dump(exclude_unset=True)
 
