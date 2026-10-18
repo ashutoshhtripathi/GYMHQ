@@ -31,11 +31,7 @@ A high-performance, full-stack gym management SaaS platform built for gym owners
   - **Attendance Log**: Scan activity analytics.
   - **Payment Collection Breakdown**: Channel percentage distribution.
   - **One-click CSV Exports** for all reports.
-- **🔐 Security & Google OAuth 2.0**
-  - **Google Sign-In**: 1-click "Continue with Google" authentication for gym owners and staff with Google Identity Services (GIS).
-  - JWT Bearer token authentication with configurable expiration.
-  - Secure bcrypt password hashing with PostgreSQL credential storage.
-  - Protected API routes and protected React client routes.
+
 - **🇮🇳 Tailored for Indian Gyms**
   - All financials and reports in Indian Rupees (`₹` / INR) with `en-IN` number formatting.
   - Standard Indian pricing tier presets: Monthly (₹1,500), Quarterly (₹4,000), Semi-Annual (₹7,500), Annual (₹14,000).
