@@ -15,9 +15,24 @@ cleanup() {
   echo ""
   echo "🛑 Stopping GYMHQ servers..."
   kill $(jobs -p) 2>/dev/null || true
+  if [ -n "${BACKEND_PID:-}" ]; then kill -9 "$BACKEND_PID" 2>/dev/null || true; fi
+  if [ -n "${FRONTEND_PID:-}" ]; then kill -9 "$FRONTEND_PID" 2>/dev/null || true; fi
   exit 0
 }
 trap cleanup SIGINT SIGTERM EXIT
+
+# Free ports 8000 and 5173 if lingering from a previous session
+if lsof -ti :8000 >/dev/null 2>&1; then
+  echo "🧹 Freeing port 8000 from previous session..."
+  kill -9 $(lsof -ti :8000) 2>/dev/null || true
+  sleep 1
+fi
+
+if lsof -ti :5173 >/dev/null 2>&1; then
+  echo "🧹 Freeing port 5173 from previous session..."
+  kill -9 $(lsof -ti :5173) 2>/dev/null || true
+  sleep 1
+fi
 
 # 1. Start FastAPI Backend
 echo "🚀 [1/2] Starting Backend API on http://127.0.0.1:8000 (Swagger docs: http://127.0.0.1:8000/docs)..."
