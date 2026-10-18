@@ -214,7 +214,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="admin or owner@gymhq.com"
+                  placeholder="Enter your username or email"
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
                   autoComplete="username"
@@ -245,7 +245,7 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="form-input"
-                  placeholder="Enter your account password"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
@@ -303,7 +303,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. IronCore Fitness Club"
+                placeholder="Enter gym or fitness club name"
                 value={regGymName}
                 onChange={(e) => setRegGymName(e.target.value)}
                 required
@@ -318,7 +318,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. Vikram Malhotra"
+                  placeholder="Enter owner's full name"
                   value={regFullName}
                   onChange={(e) => setRegFullName(e.target.value)}
                 />
@@ -331,7 +331,7 @@ export default function LoginPage() {
                 <input
                   type="tel"
                   className="form-input"
-                  placeholder="98765 43210"
+                  placeholder="Enter 10-digit mobile number"
                   value={regPhone}
                   onChange={(e) => setRegPhone(e.target.value)}
                 />
@@ -345,7 +345,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 className="form-input"
-                placeholder="owner@yourgym.com"
+                placeholder="Enter your email address"
                 value={regEmail}
                 onChange={(e) => setRegEmail(e.target.value)}
               />
@@ -359,7 +359,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. ironcore_admin"
+                  placeholder="Choose a username"
                   value={regUsername}
                   onChange={(e) => setRegUsername(e.target.value)}
                   required
@@ -373,7 +373,7 @@ export default function LoginPage() {
                 <input
                   type="password"
                   className="form-input"
-                  placeholder="Min 6 characters"
+                  placeholder="Enter password (min. 6 characters)"
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   required
@@ -453,7 +453,7 @@ export default function LoginPage() {
             <input
               type="email"
               className="form-input"
-              placeholder="owner@yourgym.com"
+              placeholder="Enter your registered email"
               value={forgotEmail}
               onChange={(e) => setForgotEmail(e.target.value)}
               required

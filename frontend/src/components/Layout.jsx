@@ -344,7 +344,7 @@ export default function Layout() {
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="e.g. IronCore Fitness Club"
+                    placeholder="Enter gym or fitness club name"
                     value={gymForm.gym_name}
                     onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })}
                     required
@@ -356,7 +356,7 @@ export default function Layout() {
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="e.g. 14 MG Road, Indiranagar, Bengaluru"
+                    placeholder="Enter gym address / city"
                     value={gymForm.gym_address}
                     onChange={(e) => setGymForm({ ...gymForm, gym_address: e.target.value })}
                   />
@@ -368,7 +368,7 @@ export default function Layout() {
                     <input
                       type="tel"
                       className="form-input"
-                      placeholder="+91 98765 43210"
+                      placeholder="Enter front desk phone"
                       value={gymForm.gym_phone}
                       onChange={(e) => setGymForm({ ...gymForm, gym_phone: e.target.value })}
                     />
@@ -379,7 +379,7 @@ export default function Layout() {
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="gymname@okhdfcbank"
+                      placeholder="Enter UPI ID (e.g. yourgym@upi)"
                       value={gymForm.upi_id}
                       onChange={(e) => setGymForm({ ...gymForm, upi_id: e.target.value })}
                     />
