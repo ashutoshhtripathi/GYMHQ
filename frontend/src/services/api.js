@@ -1,7 +1,7 @@
 const API_BASE = '/api';
 
 async function request(url, options = {}) {
-  const token = localStorage.getItem('gymhq_token');
+  const token = sessionStorage.getItem('gymhq_token');
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 

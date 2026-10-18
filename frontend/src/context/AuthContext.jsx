@@ -8,14 +8,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('gymhq_token');
-    const storedUser = localStorage.getItem('gymhq_user');
+    // Purge any stale persistent localStorage tokens so reopening the application always lands on /login
+    try {
+      localStorage.removeItem('gymhq_token');
+      localStorage.removeItem('gymhq_user');
+      localStorage.removeItem('gymhq_gym_name');
+    } catch {
+      // Ignored
+    }
+
+    const token = sessionStorage.getItem('gymhq_token');
+    const storedUser = sessionStorage.getItem('gymhq_user');
     if (token && storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch {
-        localStorage.removeItem('gymhq_token');
-        localStorage.removeItem('gymhq_user');
+        sessionStorage.removeItem('gymhq_token');
+        sessionStorage.removeItem('gymhq_user');
       }
     }
     setLoading(false);
@@ -23,10 +32,10 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     const data = await api.login({ username, password });
-    localStorage.setItem('gymhq_token', data.access_token);
-    localStorage.setItem('gymhq_user', JSON.stringify(data.user));
+    sessionStorage.setItem('gymhq_token', data.access_token);
+    sessionStorage.setItem('gymhq_user', JSON.stringify(data.user));
     if (data.user?.gym_name) {
-      localStorage.setItem('gymhq_gym_name', data.user.gym_name);
+      sessionStorage.setItem('gymhq_gym_name', data.user.gym_name);
     }
     setUser(data.user);
     return data;
@@ -38,10 +47,10 @@ export function AuthProvider({ children }) {
       : { username: regPayload, password: passwordArg, email: emailArg || null };
 
     const data = await api.register(payload);
-    localStorage.setItem('gymhq_token', data.access_token);
-    localStorage.setItem('gymhq_user', JSON.stringify(data.user));
+    sessionStorage.setItem('gymhq_token', data.access_token);
+    sessionStorage.setItem('gymhq_user', JSON.stringify(data.user));
     if (data.user?.gym_name) {
-      localStorage.setItem('gymhq_gym_name', data.user.gym_name);
+      sessionStorage.setItem('gymhq_gym_name', data.user.gym_name);
     }
     setUser(data.user);
     return data;
@@ -49,10 +58,10 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = async (googleData) => {
     const data = await api.googleAuth(googleData);
-    localStorage.setItem('gymhq_token', data.access_token);
-    localStorage.setItem('gymhq_user', JSON.stringify(data.user));
+    sessionStorage.setItem('gymhq_token', data.access_token);
+    sessionStorage.setItem('gymhq_user', JSON.stringify(data.user));
     if (data.user?.gym_name) {
-      localStorage.setItem('gymhq_gym_name', data.user.gym_name);
+      sessionStorage.setItem('gymhq_gym_name', data.user.gym_name);
     }
     setUser(data.user);
     return data;
@@ -60,17 +69,23 @@ export function AuthProvider({ children }) {
 
   const updateGym = async (profileData) => {
     const updatedUser = await api.updateGymProfile(profileData);
-    localStorage.setItem('gymhq_user', JSON.stringify(updatedUser));
+    sessionStorage.setItem('gymhq_user', JSON.stringify(updatedUser));
     if (profileData.gym_name) {
-      localStorage.setItem('gymhq_gym_name', profileData.gym_name);
+      sessionStorage.setItem('gymhq_gym_name', profileData.gym_name);
     }
     setUser(updatedUser);
     return updatedUser;
   };
 
   const logout = () => {
-    localStorage.removeItem('gymhq_token');
-    localStorage.removeItem('gymhq_user');
+    sessionStorage.clear();
+    try {
+      localStorage.removeItem('gymhq_token');
+      localStorage.removeItem('gymhq_user');
+      localStorage.removeItem('gymhq_gym_name');
+    } catch {
+      // Ignored
+    }
     setUser(null);
   };
 

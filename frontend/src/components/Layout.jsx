@@ -21,7 +21,7 @@ export default function Layout() {
   const toast = useToast();
 
   const [gymForm, setGymForm] = useState({
-    gym_name: user?.gym_name || localStorage.getItem('gymhq_gym_name') || 'IronCore Gym',
+    gym_name: user?.gym_name || sessionStorage.getItem('gymhq_gym_name') || 'IronCore Gym',
     gym_address: user?.gym_address || '',
     gym_phone: user?.gym_phone || '',
     upi_id: user?.upi_id || '',
@@ -104,7 +104,7 @@ export default function Layout() {
     }
   };
 
-  const currentGymName = user?.gym_name || gymForm.gym_name || localStorage.getItem('gymhq_gym_name') || 'My Gym';
+  const currentGymName = user?.gym_name || gymForm.gym_name || sessionStorage.getItem('gymhq_gym_name') || 'My Gym';
 
   useEffect(() => {
     if (isSuperAdmin) {

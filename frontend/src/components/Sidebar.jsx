@@ -6,7 +6,7 @@ import GymHqLogo from './GymHqLogo';
 export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
   const { user, logout } = useAuth();
   const isSuperAdmin = user?.role === 'super_admin';
-  const gymName = user?.gym_name || localStorage.getItem('gymhq_gym_name') || 'My Gym';
+  const gymName = user?.gym_name || sessionStorage.getItem('gymhq_gym_name') || 'My Gym';
   const daysLeft = user?.days_remaining ?? 30;
 
   // Gym Operations navigation (Exclusive to client gym owners)
