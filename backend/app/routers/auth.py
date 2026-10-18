@@ -7,6 +7,7 @@ from base64 import b64decode
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, GoogleAuthRequest, GymProfileUpdate
+from decimal import Decimal
 from app.auth import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])

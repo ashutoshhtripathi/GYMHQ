@@ -9,10 +9,10 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
   const gymName = user?.gym_name || localStorage.getItem('gymhq_gym_name') || 'My Gym';
   const daysLeft = user?.days_remaining ?? 30;
 
-  // Gym Operations navigation
+  // Gym Operations navigation (Exclusive to client gym owners)
   const gymNav = [
     {
-      to: isSuperAdmin ? '/gym-overview' : '/',
+      to: '/',
       label: 'Gym Overview',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
       label: 'Floor Attendance',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2h2"></path>
           <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
           <path d="m9 14 2 2 4-4"></path>
         </svg>
@@ -96,15 +96,15 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
         <div 
           className="sidebar-brand" 
           style={{
-            cursor: 'pointer',
+            cursor: isSuperAdmin ? 'default' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            background: isSuperAdmin ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(22, 27, 34, 0.8) 100%)' : undefined,
+            background: isSuperAdmin ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(22, 27, 34, 0.8) 100%)' : undefined,
             borderBottom: isSuperAdmin ? '1px solid rgba(168, 85, 247, 0.3)' : undefined,
           }}
-          onClick={onOpenGymModal}
-          title={isSuperAdmin ? "Master Headquarters" : "Click to customize gym profile"}
+          onClick={isSuperAdmin ? undefined : onOpenGymModal}
+          title={isSuperAdmin ? "GYMHQ Master Platform Headquarters" : "Click to customize gym profile"}
         >
           <GymHqLogo iconOnly size={36} />
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -112,86 +112,115 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
               {isSuperAdmin ? 'GYMHQ Master HQ' : gymName}
             </div>
             <div style={{ fontSize: '10px', color: isSuperAdmin ? '#c084fc' : 'var(--accent)', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '2px' }}>
-              {isSuperAdmin ? '👑 Master Super Admin' : `Active License (${daysLeft}d left)`}
+              {isSuperAdmin ? '👑 Master Platform Owner' : `Active License (${daysLeft}d left)`}
             </div>
           </div>
         </div>
 
         <nav className="sidebar-nav">
-          {/* SUPER ADMIN EXCLUSIVE SAAS PLATFORM SECTION */}
-          {isSuperAdmin && (
-            <div className="sidebar-section" style={{ marginBottom: '14px' }}>
-              <span className="sidebar-section-label" style={{ color: '#c084fc' }}>
-                🏢 Platform Business Control
-              </span>
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                onClick={onClose}
-                style={{
-                  background: 'rgba(168, 85, 247, 0.12)',
-                  borderColor: 'rgba(168, 85, 247, 0.3)',
-                  color: '#e9d5ff',
-                  fontWeight: '700',
-                }}
-              >
-                <span className="sidebar-link-icon" style={{ color: '#c084fc' }}>
-                  👑
+          {/* ============================================================ */}
+          {/* CASE A: PLATFORM SUPER ADMIN (WEBSITE OWNERS - REVENUE & CONTROLS ONLY) */}
+          {/* ============================================================ */}
+          {isSuperAdmin ? (
+            <>
+              <div className="sidebar-section">
+                <span className="sidebar-section-label" style={{ color: '#c084fc' }}>
+                  🏢 Platform Business & Revenue
                 </span>
-                <span>SaaS Revenue & Gyms</span>
-              </NavLink>
-            </div>
+                <NavLink
+                  to="/"
+                  end
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                  onClick={onClose}
+                  style={{
+                    background: 'rgba(168, 85, 247, 0.14)',
+                    borderColor: 'rgba(168, 85, 247, 0.35)',
+                    color: '#e9d5ff',
+                    fontWeight: '700',
+                  }}
+                >
+                  <span className="sidebar-link-icon" style={{ color: '#c084fc' }}>
+                    👑
+                  </span>
+                  <span>SaaS Revenue & Gyms</span>
+                </NavLink>
+              </div>
+
+              {/* Informational Card for Platform Owners */}
+              <div className="sidebar-section" style={{ marginTop: '20px' }}>
+                <span className="sidebar-section-label" style={{ color: 'var(--text-tertiary)' }}>
+                  Platform Scope
+                </span>
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: '10px',
+                    background: 'rgba(168, 85, 247, 0.08)',
+                    border: '1px solid rgba(168, 85, 247, 0.2)',
+                    fontSize: '12px',
+                    lineHeight: 1.5,
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <div style={{ fontWeight: '700', color: '#c084fc', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>🛡️</span> SaaS Controller
+                  </div>
+                  You are the platform administrator. Gym operations (athletes, floor attendance, gym dues) are strictly segregated for client gym owners.
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ============================================================ */
+            /* CASE B: NORMAL GYM OWNERS (THEIR GYM OPERATIONS ONLY) */
+            /* ============================================================ */
+            <>
+              <div className="sidebar-section">
+                <span className="sidebar-section-label">Operations</span>
+                {gymNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === '/'}
+                    className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <span className="sidebar-link-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+
+              <div className="sidebar-section" style={{ marginTop: '16px' }}>
+                <span className="sidebar-section-label">Financials & Billing</span>
+                {financialNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <span className="sidebar-link-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+
+              <div className="sidebar-section" style={{ marginTop: '16px' }}>
+                <span className="sidebar-section-label">Support & Setup</span>
+                {helpNav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <span className="sidebar-link-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </>
           )}
-
-          {/* GYM OPERATIONS SECTION */}
-          <div className="sidebar-section">
-            <span className="sidebar-section-label">
-              {isSuperAdmin ? '🏋️ Gym Operations (Client Mode)' : 'Operations'}
-            </span>
-            {gymNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === (isSuperAdmin ? '/gym-overview' : '/')}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                onClick={onClose}
-              >
-                <span className="sidebar-link-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
-
-          <div className="sidebar-section" style={{ marginTop: '16px' }}>
-            <span className="sidebar-section-label">Financials & Billing</span>
-            {financialNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                onClick={onClose}
-              >
-                <span className="sidebar-link-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
-
-          <div className="sidebar-section" style={{ marginTop: '16px' }}>
-            <span className="sidebar-section-label">Support & Setup</span>
-            {helpNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                onClick={onClose}
-              >
-                <span className="sidebar-link-icon">{item.icon}</span>
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
-          </div>
         </nav>
 
         {/* Footer User Info */}
@@ -202,7 +231,7 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
                 width: '38px',
                 height: '38px',
                 borderRadius: '50%',
-                background: isSuperAdmin ? 'rgba(168, 85, 247, 0.2)' : 'var(--accent-light)',
+                background: isSuperAdmin ? 'rgba(168, 85, 247, 0.25)' : 'var(--accent-light)',
                 color: isSuperAdmin ? '#c084fc' : 'var(--accent)',
                 display: 'flex',
                 alignItems: 'center',
@@ -221,7 +250,7 @@ export default function Sidebar({ isOpen, onClose, onOpenGymModal }) {
                 {user?.full_name || user?.username}
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user?.email || (isSuperAdmin ? 'Master Super-Admin' : 'Gym Administrator')}
+                {user?.email || (isSuperAdmin ? 'Master Platform Super-Admin' : 'Gym Administrator')}
               </div>
             </div>
           </div>

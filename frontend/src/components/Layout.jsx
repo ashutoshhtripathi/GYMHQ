@@ -16,7 +16,8 @@ export default function Layout() {
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { user, updateGym } = useAuth();
+  const { user, updateGym, logout } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
   const toast = useToast();
 
   const [gymForm, setGymForm] = useState({
@@ -106,8 +107,12 @@ export default function Layout() {
   const currentGymName = user?.gym_name || gymForm.gym_name || localStorage.getItem('gymhq_gym_name') || 'My Gym';
 
   useEffect(() => {
-    document.title = `${currentGymName} — GYMHQ Gym Management`;
-  }, [currentGymName]);
+    if (isSuperAdmin) {
+      document.title = 'GYMHQ Platform — Master SaaS & Revenue Control';
+    } else {
+      document.title = `${currentGymName} — GYMHQ Gym Management`;
+    }
+  }, [isSuperAdmin, currentGymName]);
 
   return (
     <div className="app-layout">
@@ -120,6 +125,7 @@ export default function Layout() {
         onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
         gymName={currentGymName} 
         onOpenGymModal={() => setGymModalOpen(true)} 
+        isSuperAdmin={isSuperAdmin}
       />
       
       <main className="app-content">
@@ -127,29 +133,49 @@ export default function Layout() {
         <div className="top-nav-bar">
           <div className="top-nav-left">
             {/* Personalized Gym Branding Header */}
-            <button
-              type="button"
-              className="gym-branding-header"
-              onClick={() => setGymModalOpen(true)}
-              title="Click to customize gym profile"
-              style={{
-                borderColor: user?.role === 'super_admin' ? 'rgba(168, 85, 247, 0.4)' : undefined,
-              }}
-            >
-              <GymHqLogo iconOnly size={28} />
-              <div className="gym-brand-info">
-                <div className="gym-brand-name">
-                  {user?.role === 'super_admin' ? 'GYMHQ Master HQ' : currentGymName}
-                  <span style={{ fontSize: '11px', color: 'var(--accent)', marginLeft: '2px' }}>✏️</span>
-                </div>
-                <div className="gym-brand-role-tag" style={{ color: user?.role === 'super_admin' ? '#c084fc' : undefined }}>
-                  <span className="pulse-dot" style={{ width: '5px', height: '5px', background: user?.role === 'super_admin' ? '#c084fc' : undefined }}></span>
-                  {user?.role === 'super_admin' ? '👑 Master Super Admin' : 'Admin Mode • Live'}
+            {isSuperAdmin ? (
+              <div
+                className="gym-branding-header"
+                style={{
+                  borderColor: 'rgba(168, 85, 247, 0.4)',
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(22, 27, 34, 0.8) 100%)',
+                  cursor: 'default',
+                }}
+                title="GYMHQ Platform SaaS Headquarters"
+              >
+                <GymHqLogo iconOnly size={28} />
+                <div className="gym-brand-info">
+                  <div className="gym-brand-name" style={{ color: '#f3e8ff' }}>
+                    GYMHQ Master HQ
+                  </div>
+                  <div className="gym-brand-role-tag" style={{ color: '#c084fc' }}>
+                    <span className="pulse-dot" style={{ width: '5px', height: '5px', background: '#c084fc' }}></span>
+                    👑 Master Platform Owner
+                  </div>
                 </div>
               </div>
-            </button>
+            ) : (
+              <button
+                type="button"
+                className="gym-branding-header"
+                onClick={() => setGymModalOpen(true)}
+                title="Click to customize gym profile"
+              >
+                <GymHqLogo iconOnly size={28} />
+                <div className="gym-brand-info">
+                  <div className="gym-brand-name">
+                    {currentGymName}
+                    <span style={{ fontSize: '11px', color: 'var(--accent)', marginLeft: '2px' }}>✏️</span>
+                  </div>
+                  <div className="gym-brand-role-tag">
+                    <span className="pulse-dot" style={{ width: '5px', height: '5px' }}></span>
+                    Admin Mode • Live
+                  </div>
+                </div>
+              </button>
+            )}
 
-            {user?.role === 'super_admin' ? (
+            {isSuperAdmin ? (
               <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)', fontSize: '11px', fontWeight: '700' }}>
                 🏢 Multi-Tenant Controller
               </span>
@@ -170,50 +196,51 @@ export default function Layout() {
           </div>
 
           <div className="top-nav-right">
-            {user?.role === 'super_admin' && (
-              <>
-                <Link
-                  to="/"
-                  className="btn btn-primary btn-sm"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', borderColor: '#c084fc' }}
-                  title="Platform Owner SaaS & Revenue Control"
+            {isSuperAdmin ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="status-indicator" style={{ color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.35)' }}>
+                  <span className="pulse-dot" style={{ background: '#c084fc' }}></span>
+                  SaaS Revenue Engine Live
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={logout}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  title="Sign out of Master Platform"
                 >
-                  <span>👑</span>
-                  SaaS Revenue & Gyms
-                </Link>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleOpenQuickCheckIn}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Fast Check-In
+                </button>
 
                 <Link
-                  to="/gym-overview"
+                  to="/guide"
                   className="btn btn-secondary btn-sm"
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                  title="Switch to Client Gym Overview"
                 >
-                  <span>🏋️</span>
-                  Gym Overview
+                  <span>📖</span>
+                  Owner's Guide
                 </Link>
               </>
             )}
-
-            <button
-              onClick={handleOpenQuickCheckIn}
-              className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Fast Check-In
-            </button>
-
-            <Link
-              to="/guide"
-              className="btn btn-secondary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <span>📖</span>
-              Owner's Guide
-            </Link>
           </div>
         </div>
 
@@ -245,139 +272,144 @@ export default function Layout() {
 
         <Outlet />
 
-        {/* Global Fast Check-In Modal accessible from anywhere */}
-        <Modal
-          isOpen={quickCheckInOpen}
-          onClose={() => setQuickCheckInOpen(false)}
-          title="⚡ Fast Front-Desk Check-In"
-        >
-          <form onSubmit={handleQuickCheckInSubmit}>
-            <div className="form-group">
-              <label className="form-label">Select Active Athlete / Member *</label>
-              {members.length === 0 ? (
-                <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  No active members enrolled yet. <Link to="/members" style={{ color: 'var(--accent)', fontWeight: '600' }} onClick={() => setQuickCheckInOpen(false)}>Enroll an athlete first →</Link>
+        {/* Fast Check-In & Gym Settings Modals strictly for Gym Owners */}
+        {!isSuperAdmin && (
+          <>
+            {/* Global Fast Check-In Modal accessible from anywhere */}
+            <Modal
+              isOpen={quickCheckInOpen}
+              onClose={() => setQuickCheckInOpen(false)}
+              title="⚡ Fast Front-Desk Check-In"
+            >
+              <form onSubmit={handleQuickCheckInSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Select Active Athlete / Member *</label>
+                  {members.length === 0 ? (
+                    <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      No active members enrolled yet. <Link to="/members" style={{ color: 'var(--accent)', fontWeight: '600' }} onClick={() => setQuickCheckInOpen(false)}>Enroll an athlete first →</Link>
+                    </div>
+                  ) : (
+                    <select
+                      className="form-select"
+                      value={selectedMemberId}
+                      onChange={(e) => setSelectedMemberId(e.target.value)}
+                      required
+                      autoFocus
+                    >
+                      <option value="">-- Choose athlete --</option>
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.phone}) {m.plan ? `• ${m.plan}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
-              ) : (
-                <select
-                  className="form-select"
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                  required
-                  autoFocus
-                >
-                  <option value="">-- Choose athlete --</option>
-                  {members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.phone}) {m.plan ? `• ${m.plan}` : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
 
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Check-in will be marked for today (<strong>{new Date().toISOString().split('T')[0]}</strong>).
-            </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                  Check-in will be marked for today (<strong>{new Date().toISOString().split('T')[0]}</strong>).
+                </div>
 
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setQuickCheckInOpen(false)}
-              >
-                Cancel
-              </button>
-              {members.length > 0 && (
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Checking in...' : '✓ Confirm Check-In'}
-                </button>
-              )}
-            </div>
-          </form>
-        </Modal>
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setQuickCheckInOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  {members.length > 0 && (
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Checking in...' : '✓ Confirm Check-In'}
+                    </button>
+                  )}
+                </div>
+              </form>
+            </Modal>
 
-        {/* Gym Settings & Profile Modal */}
-        <Modal
-          isOpen={gymModalOpen}
-          onClose={() => setGymModalOpen(false)}
-          title="🏢 Gym Profile & Operating Settings"
-          maxWidth="500px"
-        >
-          <form onSubmit={handleGymProfileSubmit}>
-            <div className="form-group">
-              <label className="form-label">Gym / Fitness Club Name *</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. IronCore Fitness Club"
-                value={gymForm.gym_name}
-                onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })}
-                required
-              />
-            </div>
+            {/* Gym Settings & Profile Modal */}
+            <Modal
+              isOpen={gymModalOpen}
+              onClose={() => setGymModalOpen(false)}
+              title="🏢 Gym Profile & Operating Settings"
+              maxWidth="500px"
+            >
+              <form onSubmit={handleGymProfileSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Gym / Fitness Club Name *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. IronCore Fitness Club"
+                    value={gymForm.gym_name}
+                    onChange={(e) => setGymForm({ ...gymForm, gym_name: e.target.value })}
+                    required
+                  />
+                </div>
 
-            <div className="form-group">
-              <label className="form-label">Location / Address</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. 14 MG Road, Indiranagar, Bengaluru"
-                value={gymForm.gym_address}
-                onChange={(e) => setGymForm({ ...gymForm, gym_address: e.target.value })}
-              />
-            </div>
+                <div className="form-group">
+                  <label className="form-label">Location / Address</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. 14 MG Road, Indiranagar, Bengaluru"
+                    value={gymForm.gym_address}
+                    onChange={(e) => setGymForm({ ...gymForm, gym_address: e.target.value })}
+                  />
+                </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Front Desk Phone</label>
-                <input
-                  type="tel"
-                  className="form-input"
-                  placeholder="+91 98765 43210"
-                  value={gymForm.gym_phone}
-                  onChange={(e) => setGymForm({ ...gymForm, gym_phone: e.target.value })}
-                />
-              </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Front Desk Phone</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      placeholder="+91 98765 43210"
+                      value={gymForm.gym_phone}
+                      onChange={(e) => setGymForm({ ...gymForm, gym_phone: e.target.value })}
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">UPI ID (For Member Fees)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="gymname@okhdfcbank"
-                  value={gymForm.upi_id}
-                  onChange={(e) => setGymForm({ ...gymForm, upi_id: e.target.value })}
-                />
-              </div>
-            </div>
+                  <div className="form-group">
+                    <label className="form-label">UPI ID (For Member Fees)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="gymname@okhdfcbank"
+                      value={gymForm.upi_id}
+                      onChange={(e) => setGymForm({ ...gymForm, upi_id: e.target.value })}
+                    />
+                  </div>
+                </div>
 
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
-              ℹ️ Your gym name is displayed on athlete invoices, reports, top bar, and reminder messages.
-            </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+                  ℹ️ Your gym name is displayed on athlete invoices, reports, top bar, and reminder messages.
+                </div>
 
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setGymModalOpen(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={submitting}
-              >
-                {submitting ? 'Saving...' : 'Save Gym Profile'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setGymModalOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Saving...' : 'Save Gym Profile'}
+                  </button>
+                </div>
+              </form>
+            </Modal>
+          </>
+        )}
       </main>
     </div>
   );

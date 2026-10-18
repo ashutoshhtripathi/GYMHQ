@@ -144,11 +144,17 @@ def test_platform_users():
 def test_platform_status_toggle():
     """Verify platform user activation toggle."""
     headers = _get_super_admin_headers()
-    response = client.put("/api/platform/users/2/status", json={"is_active": False}, headers=headers)
+    users_res = client.get("/api/platform/users", headers=headers)
+    assert users_res.status_code == 200
+    gym_users = users_res.json()
+    assert len(gym_users) > 0
+    gym_id = gym_users[0]["id"]
+
+    response = client.put(f"/api/platform/users/{gym_id}/status", json={"is_active": False}, headers=headers)
     assert response.status_code == 200
     assert response.json()["is_active"] is False
 
-    response2 = client.put("/api/platform/users/2/status", json={"is_active": True}, headers=headers)
+    response2 = client.put(f"/api/platform/users/{gym_id}/status", json={"is_active": True}, headers=headers)
     assert response2.status_code == 200
     assert response2.json()["is_active"] is True
 
@@ -182,9 +188,15 @@ def test_platform_forbidden_for_regular_gym_owner():
 def test_platform_subscription_management():
     """Verify platform owner can set gym subscription fee and extend validity."""
     headers = _get_super_admin_headers()
+    users_res = client.get("/api/platform/users", headers=headers)
+    assert users_res.status_code == 200
+    gym_users = users_res.json()
+    assert len(gym_users) > 0
+    gym_id = gym_users[0]["id"]
+
     # Update gym subscription fee to ₹1,499 and extend by 30 days
     sub_res = client.put(
-        "/api/platform/users/2/subscription",
+        f"/api/platform/users/{gym_id}/subscription",
         json={
             "subscription_fee": 1499.00,
             "subscription_plan": "Growth Pro",

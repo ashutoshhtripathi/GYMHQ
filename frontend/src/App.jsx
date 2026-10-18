@@ -21,6 +21,15 @@ function SuperAdminRoute({ children }) {
   return children;
 }
 
+function GymOwnerRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user?.role === 'super_admin') {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 function HomeRoute() {
   const { user } = useAuth();
   if (user?.role === 'super_admin') {
@@ -43,12 +52,50 @@ export default function App() {
         }
       >
         <Route index element={<HomeRoute />} />
-        <Route path="gym-overview" element={<DashboardPage />} />
-        <Route path="members" element={<MembersPage />} />
-        <Route path="attendance" element={<AttendancePage />} />
-        <Route path="payments" element={<PaymentsPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="guide" element={<GuidePage />} />
+        
+        {/* Gym operational pages strictly reserved for client gym owners */}
+        <Route
+          path="members"
+          element={
+            <GymOwnerRoute>
+              <MembersPage />
+            </GymOwnerRoute>
+          }
+        />
+        <Route
+          path="attendance"
+          element={
+            <GymOwnerRoute>
+              <AttendancePage />
+            </GymOwnerRoute>
+          }
+        />
+        <Route
+          path="payments"
+          element={
+            <GymOwnerRoute>
+              <PaymentsPage />
+            </GymOwnerRoute>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <GymOwnerRoute>
+              <ReportsPage />
+            </GymOwnerRoute>
+          }
+        />
+        <Route
+          path="guide"
+          element={
+            <GymOwnerRoute>
+              <GuidePage />
+            </GymOwnerRoute>
+          }
+        />
+        
+        {/* Platform SaaS administration */}
         <Route
           path="access-control"
           element={

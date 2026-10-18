@@ -1,8 +1,8 @@
 import React from 'react';
 import GymHqLogo from './GymHqLogo';
 
-export default function Header({ onMenuClick, gymName, onOpenGymModal }) {
-  const displayName = gymName || 'GYMHQ';
+export default function Header({ onMenuClick, gymName, onOpenGymModal, isSuperAdmin }) {
+  const displayName = isSuperAdmin ? 'GYMHQ Master HQ' : (gymName || 'GYMHQ');
 
   return (
     <header className="mobile-header">
@@ -18,72 +18,114 @@ export default function Header({ onMenuClick, gymName, onOpenGymModal }) {
         </svg>
       </button>
 
-      <button
-        type="button"
-        onClick={onOpenGymModal}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '4px 8px',
-          borderRadius: 'var(--radius-sm)',
-          maxWidth: 'calc(100vw - 120px)',
-          textAlign: 'left',
-        }}
-        title="Click to customize gym name"
-      >
-        <GymHqLogo iconOnly size={26} />
-        <span
+      {isSuperAdmin ? (
+        <div
           style={{
-            fontWeight: '800',
-            letterSpacing: '-0.02em',
-            fontSize: '15px',
-            color: 'var(--text-primary)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            maxWidth: 'calc(100vw - 80px)',
           }}
         >
-          {displayName}
-        </span>
-        <span
+          <GymHqLogo iconOnly size={26} />
+          <span
+            style={{
+              fontWeight: '800',
+              letterSpacing: '-0.02em',
+              fontSize: '15px',
+              color: '#f3e8ff',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            GYMHQ Master HQ
+          </span>
+          <span
+            style={{
+              fontSize: '9px',
+              background: 'rgba(168, 85, 247, 0.2)',
+              color: '#c084fc',
+              padding: '2px 5px',
+              borderRadius: '4px',
+              fontWeight: '700',
+              letterSpacing: '0.04em',
+              flexShrink: 0,
+            }}
+          >
+            PLATFORM
+          </span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onOpenGymModal}
           style={{
-            fontSize: '9px',
-            background: 'var(--accent-light)',
-            color: 'var(--accent)',
-            padding: '2px 5px',
-            borderRadius: '4px',
-            fontWeight: '700',
-            letterSpacing: '0.04em',
-            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px 8px',
+            borderRadius: 'var(--radius-sm)',
+            maxWidth: 'calc(100vw - 120px)',
+            textAlign: 'left',
           }}
+          title="Click to customize gym name"
         >
-          ADMIN
-        </span>
-      </button>
+          <GymHqLogo iconOnly size={26} />
+          <span
+            style={{
+              fontWeight: '800',
+              letterSpacing: '-0.02em',
+              fontSize: '15px',
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {displayName}
+          </span>
+          <span
+            style={{
+              fontSize: '9px',
+              background: 'var(--accent-light)',
+              color: 'var(--accent)',
+              padding: '2px 5px',
+              borderRadius: '4px',
+              fontWeight: '700',
+              letterSpacing: '0.04em',
+              flexShrink: 0,
+            }}
+          >
+            ADMIN
+          </span>
+        </button>
+      )}
 
-      <button
-        type="button"
-        onClick={onOpenGymModal}
-        aria-label="Gym settings"
-        style={{
-          width: '36px',
-          height: '36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'none',
-          border: 'none',
-          color: 'var(--text-secondary)',
-          cursor: 'pointer',
-          fontSize: '16px',
-        }}
-      >
-        ⚙️
-      </button>
+      {!isSuperAdmin && (
+        <button
+          type="button"
+          onClick={onOpenGymModal}
+          aria-label="Gym settings"
+          style={{
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontSize: '16px',
+          }}
+        >
+          ⚙️
+        </button>
+      )}
     </header>
   );
 }
