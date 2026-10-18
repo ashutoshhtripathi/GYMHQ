@@ -95,14 +95,6 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## 🔑 Default Credentials
-
-GYMHQ comes pre-seeded with an administrator account for instant access:
-
-- **Username:** `admin`
-- **Password:** `adminpassword123`
-
-*(You can also register new staff or manager accounts directly on the login page)*
 
 ---
 
