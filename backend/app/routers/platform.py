@@ -9,6 +9,7 @@ from app.auth import require_super_admin
 from app.models.user import User
 from app.models.member import Member
 from app.models.payment import Payment
+from app.models.attendance import Attendance
 from app.schemas.user import (
     PlatformUserItem, PlatformOverview, UserStatusUpdate,
     UserResponse, GymSubscriptionUpdate,
@@ -308,7 +309,7 @@ def delete_platform_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_super_admin),
 ):
-    """Remove a gym owner or spam account from the platform."""
+    """Remove a gym owner and all associated members/records from GYMHQ."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -319,6 +320,19 @@ def delete_platform_user(
             detail="Cannot delete platform master super administrator account.",
         )
 
+    # Clean up all child data belonging to this gym
+    members = db.query(Member).filter(Member.user_id == user.id).all()
+    member_ids = [m.id for m in members]
+
+    if member_ids:
+        # Delete payments for these members
+        db.query(Payment).filter(Payment.member_id.in_(member_ids)).delete(synchronize_session=False)
+        # Delete attendance for these members
+        db.query(Attendance).filter(Attendance.member_id.in_(member_ids)).delete(synchronize_session=False)
+        # Delete members
+        db.query(Member).filter(Member.id.in_(member_ids)).delete(synchronize_session=False)
+
+    gym_title = user.gym_name or user.username
     db.delete(user)
     db.commit()
-    return {"message": f"User account '{user.username}' successfully deleted from GYMHQ."}
+    return {"message": f"Gym '{gym_title}' and all its records have been successfully deleted from GYMHQ."}

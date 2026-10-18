@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Numeric, Text, func
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 
@@ -29,3 +30,6 @@ class User(Base):
     subscription_start = Column(Date, nullable=True)
     subscription_end = Column(Date, nullable=True)
     admin_notes = Column(Text, nullable=True)
+
+    # Relationships
+    members = relationship("Member", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)

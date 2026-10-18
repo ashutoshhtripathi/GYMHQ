@@ -24,6 +24,6 @@ class Member(Base):
     )
 
     # Relationships
-    user = relationship("User", backref="members")
+    user = relationship("User", back_populates="members")
     attendances = relationship("Attendance", back_populates="member", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="member", cascade="all, delete-orphan")
